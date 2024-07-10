@@ -1,4 +1,4 @@
-## My Project
+## GenAI Video Short-form Generator
 
 TODO: Fill this README out!
 
