@@ -79,7 +79,7 @@ def create_new_video(uuid, index, bucket_name, sections):
     # Calculate the total duration of sections in milliseconds
     sections_duration_ms = int(sections_total_duration * 1000 + 40 * (len(sections)-1))
 
-    background_file_square = f's3://{bucket_name}/assets/shorts-background-1x1.png'
+    background_file_square = f's3://{bucket_name}/videos/{uuid}/background/{index}-square.png'
     
     OutputTemplate = [
         {

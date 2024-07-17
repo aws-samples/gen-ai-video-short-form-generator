@@ -16,7 +16,7 @@ const schema = a.schema({
       shortified: a.boolean().required(),
       stage: a.integer().required(),
     })
-    .authorization((allow) => [allow.authenticated()]),
+    .authorization((allow) => [allow.owner()]),
 
   Highlight: a.model({
     VideoName: a.string().required(),
@@ -26,7 +26,7 @@ const schema = a.schema({
     Text: a.string(),
   })
   .identifier(['VideoName', "Index"])
-  .authorization((allow) => [allow.authenticated()]),
+  .authorization((allow) => [allow.owner()]),
   
   StageChanged: a.customType({
     videoId: a.string().required(),

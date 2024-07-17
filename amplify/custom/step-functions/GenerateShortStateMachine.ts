@@ -3,7 +3,7 @@ import * as sfn from 'aws-cdk-lib/aws-stepfunctions'
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks'
 import { Construct } from 'constructs';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { MakeShortTemplate } from '../resource';
+import { MakeShortTemplate, CreateBackground } from '../resource';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 
 
@@ -28,7 +28,8 @@ export class GenerateShortStateMachine extends Construct {
         managedPolicyArn: 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
       })
 
-      // lambda 
+      // lambda
+      const createBackgroundFunc = new CreateBackground(this, "CreateBackgroundFunc", {bucket: props.bucket})
       const mediaConvertTemplateFunc = new MakeShortTemplate(this, "MediaConvertTemplateFunc", {})
 
       // definition
@@ -43,7 +44,13 @@ export class GenerateShortStateMachine extends Construct {
         },
       })
 
-      const mediaConvertTemplate = new tasks.LambdaInvoke(this, 'mediaConvertTemplate', {
+      const createBackground = new tasks.LambdaInvoke(this, 'CreateBackground', {
+        lambdaFunction: createBackgroundFunc.handler,
+        payload: sfn.TaskInput.fromJsonPathAt("$"),
+        resultPath: sfn.JsonPath.DISCARD
+      })
+
+      const mediaConvertTemplate = new tasks.LambdaInvoke(this, 'MediaConvertTemplate', {
         lambdaFunction: mediaConvertTemplateFunc.handler,
         payload: sfn.TaskInput.fromJsonPathAt("$"),
         resultSelector: {
@@ -68,6 +75,7 @@ export class GenerateShortStateMachine extends Construct {
       })
 
       const definitionBody = prepareParameters
+        .next(createBackground)
         .next(mediaConvertTemplate)
         .next(mediaConvertFinalJob)
 

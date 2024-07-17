@@ -22,13 +22,14 @@ def lambda_handler(event, context):
     uuid = event['uuid']
     source_file_key = "videos/" + uuid + "/Transcript.json"
 
-    history = dynamodb.Table(os.environ["HISTORY_TABLE_NAME"])
+    history = dynamodb.Table(table_name)
     video_history = history.get_item(
         Key={
             'id': uuid
         }
     )
     modelID = video_history['Item']['modelID']
+    owner = video_history["Item"]["owner"]
     
     # Fetch the transcript from S3
     response = s3.get_object(Bucket=bucket_name, Key=source_file_key)
@@ -37,7 +38,7 @@ def lambda_handler(event, context):
 
     # Process the transcript through the bedrock model to extract topics
     topics = get_topics_from_transcript(script, modelID)
-    video_array = process_topics(topics, script, uuid, modelID)
+    video_array = process_topics(topics, script, uuid, modelID, owner)
 
     return {
         'statusCode': 200,
@@ -88,12 +89,11 @@ def get_topics_from_transcript(script, modelID):
     topics = json.loads(rawTopics[firstIndex:endIndex+1])
     return topics["Topics"]
 
-def process_topics(topics, script, uuid, modelID):
+def process_topics(topics, script, uuid, modelID, owner):
     shorts = dynamodb.Table(os.environ["HIGHLIGHT_TABLE_NAME"])
     video_array = []
     for i, topic in enumerate(topics):
         section_text = extract_and_process_section(topic, script, modelID)
-        print(section_text)
         timestamp = datetime.datetime.now(datetime.UTC).isoformat()[:-6]+"Z"
         highlight = {
             "Text": section_text,
@@ -101,7 +101,8 @@ def process_topics(topics, script, uuid, modelID):
             "Index": str(i + 1),
             "VideoName": uuid,
             "createdAt": timestamp,
-            "updatedAt": timestamp
+            "updatedAt": timestamp,
+            "owner": owner
         }
         shorts.put_item(Item=highlight)
         
