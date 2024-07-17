@@ -10,6 +10,7 @@ dynamodb = boto3.resource('dynamodb')
 eventbridge = boto3.client('events') 
 bedrock = boto3.client(
     service_name='bedrock-runtime',
+    region_name='us-east-1',
     config=botocore.config.Config(connect_timeout=1000, read_timeout=1000)
 )
 

@@ -9,6 +9,12 @@ export interface ModelOption {
 
 export const modelOptions: ModelOption[] = [
   {
+    name: "Claude 3.0 Opus",
+    logo: "logos/anthropic-logo.png",
+    modelId: "anthropic.claude-3-opus-20240229-v1:0",
+    provider: "Anthropic"
+  },
+  {
     name: "Claude 3.5 Sonnet",
     logo: "logos/anthropic-logo.png",
     modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
