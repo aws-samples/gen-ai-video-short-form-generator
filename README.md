@@ -14,7 +14,9 @@ This repository is sample generative AI video short-form generator application u
 
 > [!IMPORTANT]
 > The application uses Amazon Bedrock in the **us-east-1** region. Please allow model access in **us-east-1**.
-> The application only supports models from Anthropic's Claude 3.0 and above (3.0 haiku, 3.0 sonnet, 3.5 sonnet).
+
+> [!IMPORTANT]
+> The application only supports models from Anthropic Claude 3.0 and above **(3.0 Haiku, 3.0 Sonnet, 3.5 Sonnet)**.
 
 ### Sandbox Deployment
 
@@ -71,9 +73,6 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 - [Kihoon Kwon](https://github.com/kyoonkwon)
 - [Sukwon Lee](https://github.com/ltrain81)
 
-## Contributors
-
-[![contributors](https://contrib.rocks/image?repo=aws-samples/gen-ai-video-short-form-generator&max=1000)](https://github.com/aws-samples/gen-ai-video-short-form-generator/graphs/contributors)
 
 ## License
 
