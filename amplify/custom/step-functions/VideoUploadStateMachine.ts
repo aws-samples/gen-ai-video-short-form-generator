@@ -5,6 +5,7 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib/core';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam'
+import { CfnJobTemplate } from 'aws-cdk-lib/aws-mediaconvert';
 
 import { InvokeBedrock } from '../resource';
 import { ExtractTimeframe } from '../resource';
@@ -73,6 +74,76 @@ export class VideoUploadStateMachine extends Construct {
           resultPath: sfn.JsonPath.DISCARD
         })
       };
+
+      // MediaConvert Job Template
+      const jobTemplate = new CfnJobTemplate(this, 'FHDJobTemplate', {
+        settingsJson: {
+          "Description": "Make all video 1920x1080",
+          "Settings": {
+            "TimecodeConfig": {
+              "Source": "ZEROBASED"
+            },
+            "OutputGroups": [
+              {
+                "Name": "File Group",
+                "Outputs": [
+                  {
+                    "ContainerSettings": {
+                      "Container": "MP4",
+                      "Mp4Settings": {}
+                    },
+                    "VideoDescription": {
+                      "Width": 1920,
+                      "ScalingBehavior": "FIT",
+                      "Height": 1080,
+                      "CodecSettings": {
+                        "Codec": "H_264",
+                        "H264Settings": {
+                          "FramerateDenominator": 1,
+                          "MaxBitrate": 5000000,
+                          "FramerateControl": "SPECIFIED",
+                          "RateControlMode": "QVBR",
+                          "FramerateNumerator": 25,
+                          "SceneChangeDetect": "TRANSITION_DETECTION"
+                        }
+                      }
+                    },
+                    "AudioDescriptions": [
+                      {
+                        "CodecSettings": {
+                          "Codec": "AAC",
+                          "AacSettings": {
+                            "Bitrate": 96000,
+                            "CodingMode": "CODING_MODE_2_0",
+                            "SampleRate": 48000
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
+              }
+            ],
+            "Inputs": [
+              {
+                "AudioSelectors": {
+                  "Audio Selector 1": {
+                    "DefaultSelection": "DEFAULT"
+                  }
+                },
+                "VideoSelector": {},
+                "TimecodeSource": "ZEROBASED"
+              }
+            ]
+          },
+          "AccelerationSettings": {
+            "Mode": "DISABLED"
+          },
+          "StatusUpdateInterval": "SECONDS_60",
+          "Priority": 0,
+          "HopDestinations": []
+        },
+      });
 
       // Step functions
 
@@ -174,7 +245,7 @@ export class VideoUploadStateMachine extends Construct {
       const mediaConvertExtractJob = new tasks.MediaConvertCreateJob(this, 'MediaConvertExtractJob', {
         createJobRequest: {
           "Role": mediaConvertRole.roleArn,
-          "JobTemplate": "toFHD",
+          "JobTemplate": jobTemplate.attrArn,
           "Settings": {
             "Inputs": [
               {

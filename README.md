@@ -1,6 +1,6 @@
 # GenAI Video Short-form Generator
 
-This repository is sample generative AI video short-form generator application using AWS Bedrock and serverless services.
+This repository is sample generative AI video short-form generator application using Amazon Bedrock and AWS serverless services.
 
 ## Deployment
 
@@ -26,20 +26,20 @@ This repository is sample generative AI video short-form generator application u
 git clone https://github.com/aws-samples/gen-ai-video-short-form-generator.git
 ```
 
-2. install dependency
+2. Install dependency
 
 ```sh
 cd gen-ai-video-short-form-generator
 npm install
 ```
 
-3. deploy cloud sandbox
+3. Deploy cloud sandbox
 
 ```sh
 npx ampx sandbox
 ```
 
-4. run frontend app
+4. Run frontend app
 
 ```sh
 npm run dev
