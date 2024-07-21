@@ -65,7 +65,7 @@ def new_video(timeframes):
 
 def lambda_handler(event, context):
     uuid = event['uuid'] 
-    index = event['index']
+    index = str(event['index'])
     
     dynamodb = boto3.resource('dynamodb')
     shorts_table = dynamodb.Table(highlight_table)

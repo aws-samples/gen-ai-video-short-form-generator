@@ -1,4 +1,5 @@
-export { InvokeBedrock } from './InvokeBedrock/resource';
+export { ExtractTopics } from './ExtractTopics/resource';
+export { ProcessTopics } from './ProcessTopics/resource';
 export { ExtractTimeframe } from './ExtractTimeframe/resource';
 export { MakeShortTemplate } from './MakeShortTemplate/resource';
 export { CreateBackground } from './CreateBackground/resource';

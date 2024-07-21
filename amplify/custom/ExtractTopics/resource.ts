@@ -5,21 +5,21 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Duration } from 'aws-cdk-lib/core';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
-type InvokeBedrockProps = {
+type ExtractTopicsProps = {
   bucket: IBucket,
   historyTable: ITable,
   highlightTable: ITable,
 };
 
-export class InvokeBedrock extends Construct {
+export class ExtractTopics extends Construct {
   public readonly handler: Function;
-  constructor(scope: Construct, id: string, props: InvokeBedrockProps) {
+  constructor(scope: Construct, id: string, props: ExtractTopicsProps) {
     super(scope, id);
 
     // cdk consturct to create lambda function
-    this.handler = new Function(this, 'InvokeBedrock', {
+    this.handler = new Function(this, 'ExtractTopicsBedrock', {
       runtime: Runtime.PYTHON_3_12,
-      code: Code.fromAsset('amplify/custom/lambda-functions/invoke-bedrock'),
+      code: Code.fromAsset('amplify/custom/lambda-functions/extract-topics-bedrock'),
       handler: 'lambda_function.lambda_handler',
       environment: {
         BUCKET_NAME: props.bucket.bucketName,
