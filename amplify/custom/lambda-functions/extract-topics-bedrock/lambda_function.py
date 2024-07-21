@@ -40,14 +40,31 @@ def lambda_handler(event, context):
 def get_topics_from_transcript(script, modelID):
     prompt = f"""
     Human:
-    Below is a transcript of a video about Amazon Web Services.
+    Below is a transcript of a video.
     <script> {script} </script>
+    Extract the agenda items from the script in the order they appear. Follow these guidelines:
 
-    Find the agenda in the order of the script. Be specific and extract 9 topics. 
-    Topics should be explanatory of something about the whole video's topic. Only give the topics in the scripts Language, less than 8 words. Keep proper nouns in its original language.
-    Topic should be written like a video title. 
-    Give it to me in well-formated JSON structure: <JSON> {{"Topics": ["Topic1","Topic2","Topic3","Topic4","Topic5"]}}
-    
+    1. Aim for at least 9 topics. If the video is short, provide as many as possible.
+    2. Topics should be specific and explanatory of the video's overall content.
+    3. Express each topic in the script's original language.
+    4. Keep proper nouns and AWS service names in their original language (typically English, but can be in Korean, Japanese, or other).
+    5. Format each topic like a concise video title, using 8 words or less.
+    6. Ensure topics follow the video's chronological order.
+
+    Present the extracted agenda in this JSON format:
+    <JSON>
+    {{
+    "Topics": [
+        "Topic1",
+        "Topic2",
+        "Topic3",
+        ...
+        "Topic9"
+    ]
+    }}
+    </JSON>
+    Respond only with the JSON structure above, filled with the extracted topics.
+        
     \n\nAssistant: <JSON>
     """
 

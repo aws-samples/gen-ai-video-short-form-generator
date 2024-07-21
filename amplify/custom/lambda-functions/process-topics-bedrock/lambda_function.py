@@ -59,44 +59,40 @@ def extract_and_process_section(topic, script, modelID):
        
     prompt = f"""
     Human: 
-    This is a <script> of a video about Amazon Web Services.
-    
+    This is a <script> of a video.
+
     <script> {script} </script> 
-    
-    Extract and Chunk out one part of the <script> that best explains or cover about the <topic> below. 
+    Extract and chunk out one part of the <script> that best explains or covers the <topic> below.
+
     <Topic> {topic} </Topic>
 
-    Follow <Instructions> and think step by step to do this. 
-    
+    Follow <Instructions> and think step by step to do this.
     <Instructions>
         <Step 1>
-            Go through the whole script and understand the whole video.
+            Thoroughly read and understand the entire script.
         </Step 1>
         <Step 2>
-            Now from the script, find out the part where the <Topic> is being covered.
+            Identify the specific part of the script where the <Topic> is being covered.
         </Step 2>
         <Step 3>
-            From the part that you have found in <Step 2>, extract and chunk out a pat of the script that best explains the specified topic. The part should be less than 300 words, 
-            While doing so, just copy the whole string. Never, in any case, fix, modify, rephrase, summarize, correct, skip, or change anything from the original <script>. This includes everything from punctuation, spelling, grammatical errors, and spacing.
+            From the part identified in <Step 2>, extract a section that best explains the specified topic. This extract MUST be 300 words or less.
+            IMPORTANT: Copy the text exactly as it appears. Do not fix, modify, rephrase, summarize, correct, skip, or change anything from the original <script>. This includes all punctuation, spelling, grammatical errors, and spacing.
         </Step 3>
         <Step 4>
-            Check again the section you chose above. It should not have changed a single letter. We should be able to find the exact pharse from the <script>. It should be less than 300 words but can be shorter to only hold the neccessary part.
+            Double-check the extracted section. Confirm that not a single character has been changed and that it can be found verbatim in the <script>. Verify that it is 300 words or less.
         </Step 4>
         <Step 5>
-            Provide a fitting video title in the scripts language for this part, ensuring that proper nouns and AWS service names are kept in their correct English format. Use AWS and Amazon appropriately in service names. 한국어로 쓰세요. 
+            Create an appropriate video title in the language of the <script> for this section. Ensure that proper nouns are kept in their correct English format.
         </Step 5>
     </Instructions>
-    
-    Output only the extracted section as below: 
-    
+    Output only the extracted section as below:
     <JSON>
     {{
-        "VideoTitle": "[Korean video title with proper nouns/AWS services in English]",
+        "VideoTitle": "[Video title with proper nouns in its original language]",
         "text": "[Extracted relevant section from the original transcript <= 300 words]"
     }}
     </JSON>
-    
-    Write after <JSON> and only 
+    Write after <JSON> and only
     
     \n\nAssistant:<JSON> 
     """
