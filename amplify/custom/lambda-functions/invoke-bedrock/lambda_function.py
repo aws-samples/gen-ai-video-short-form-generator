@@ -138,7 +138,7 @@ def extract_and_process_section(topic, script, modelID):
             Now from the script, find out the part where the <Topic> is being covered.
         </Step 2>
         <Step 3>
-            From the part that you have found in <Step 2>, extract and chunk out a pat of the script that best explains the specified topic. The part should be less than 400 words, 
+            From the part that you have found in <Step 2>, extract and chunk out a pat of the script that best explains the specified topic. The part should be less than 300 words, 
             While doing so, just copy the whole string. Never, in any case, fix, modify, rephrase, summarize, correct, skip, or change anything from the original <script>. This includes everything from punctuation, spelling, grammatical errors, and spacing.
         </Step 3>
         <Step 4>
@@ -154,7 +154,7 @@ def extract_and_process_section(topic, script, modelID):
     <JSON>
     {{
         "VideoTitle": "[Korean video title with proper nouns/AWS services in English]",
-        "text": "[Extracted relevant section from the original transcript <= 400 words]"
+        "text": "[Extracted relevant section from the original transcript <= 300 words]"
     }}
     </JSON>
     

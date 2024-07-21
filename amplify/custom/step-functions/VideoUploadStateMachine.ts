@@ -75,76 +75,6 @@ export class VideoUploadStateMachine extends Construct {
         })
       };
 
-      // MediaConvert Job Template
-      const jobTemplate = new CfnJobTemplate(this, 'FHDJobTemplate', {
-        settingsJson: {
-          "Description": "Make all video 1920x1080",
-          "Settings": {
-            "TimecodeConfig": {
-              "Source": "ZEROBASED"
-            },
-            "OutputGroups": [
-              {
-                "Name": "File Group",
-                "Outputs": [
-                  {
-                    "ContainerSettings": {
-                      "Container": "MP4",
-                      "Mp4Settings": {}
-                    },
-                    "VideoDescription": {
-                      "Width": 1920,
-                      "ScalingBehavior": "FIT",
-                      "Height": 1080,
-                      "CodecSettings": {
-                        "Codec": "H_264",
-                        "H264Settings": {
-                          "FramerateDenominator": 1,
-                          "MaxBitrate": 5000000,
-                          "FramerateControl": "SPECIFIED",
-                          "RateControlMode": "QVBR",
-                          "FramerateNumerator": 25,
-                          "SceneChangeDetect": "TRANSITION_DETECTION"
-                        }
-                      }
-                    },
-                    "AudioDescriptions": [
-                      {
-                        "CodecSettings": {
-                          "Codec": "AAC",
-                          "AacSettings": {
-                            "Bitrate": 96000,
-                            "CodingMode": "CODING_MODE_2_0",
-                            "SampleRate": 48000
-                          }
-                        }
-                      }
-                    ]
-                  }
-                ],
-              }
-            ],
-            "Inputs": [
-              {
-                "AudioSelectors": {
-                  "Audio Selector 1": {
-                    "DefaultSelection": "DEFAULT"
-                  }
-                },
-                "VideoSelector": {},
-                "TimecodeSource": "ZEROBASED"
-              }
-            ]
-          },
-          "AccelerationSettings": {
-            "Mode": "DISABLED"
-          },
-          "StatusUpdateInterval": "SECONDS_60",
-          "Priority": 0,
-          "HopDestinations": []
-        },
-      });
-
       // Step functions
 
       const prepareParameters = new sfn.Pass(this, 'PrepareParameters', {
@@ -245,11 +175,20 @@ export class VideoUploadStateMachine extends Construct {
       const mediaConvertExtractJob = new tasks.MediaConvertCreateJob(this, 'MediaConvertExtractJob', {
         createJobRequest: {
           "Role": mediaConvertRole.roleArn,
-          "JobTemplate": jobTemplate.attrArn,
           "Settings": {
+            "TimecodeConfig": {
+              "Source": "ZEROBASED"
+            },
             "Inputs": [
               {
                 "FileInput.$": "$.timeframe_extracted.raw_file_path",
+                "AudioSelectors": {
+                  "Audio Selector 1": {
+                    "DefaultSelection": "DEFAULT"
+                  }
+                },
+                "VideoSelector": {},
+                "TimecodeSource": "ZEROBASED",
                 "InputClippings": [
                   {
                     "StartTimecode.$": "$.timeframe_extracted.start_timecode",
@@ -258,8 +197,45 @@ export class VideoUploadStateMachine extends Construct {
                 ]
               }
             ],
-            "OutputGroups": [
+            "OutputGroups": [ 
               {
+                "Name": "FileGroup",
+                "Outputs": [
+                  {
+                    "ContainerSettings": {
+                      "Container": "MP4",
+                      "Mp4Settings": {}
+                    },
+                    "VideoDescription": {
+                      "Width": 1920,
+                      "ScalingBehavior": "FIT",
+                      "Height": 1080,
+                      "CodecSettings": {
+                        "Codec": "H_264",
+                        "H264Settings": {
+                          "FramerateDenominator": 1,
+                          "MaxBitrate": 5000000,
+                          "FramerateControl": "SPECIFIED",
+                          "RateControlMode": "QVBR",
+                          "FramerateNumerator": 25,
+                          "SceneChangeDetect": "TRANSITION_DETECTION"
+                        }
+                      }
+                    },
+                    "AudioDescriptions": [
+                      {
+                        "CodecSettings": {
+                          "Codec": "AAC",
+                          "AacSettings": {
+                            "Bitrate": 96000,
+                            "CodingMode": "CODING_MODE_2_0",
+                            "SampleRate": 48000
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
                 "OutputGroupSettings": {
                   "Type": "FILE_GROUP_SETTINGS",
                   "FileGroupSettings": {

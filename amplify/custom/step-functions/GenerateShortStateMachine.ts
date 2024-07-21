@@ -23,10 +23,10 @@ export class GenerateShortStateMachine extends Construct {
       });
       mediaConvertRole.addManagedPolicy({
         managedPolicyArn: 'arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess'
-      })
+      });
       mediaConvertRole.addManagedPolicy({
         managedPolicyArn: 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
-      })
+      });
 
       // lambda
       const createBackgroundFunc = new CreateBackground(this, "CreateBackgroundFunc", {bucket: props.bucket})
@@ -42,13 +42,13 @@ export class GenerateShortStateMachine extends Construct {
           "bucket_name.$": "$.bucket_name",
           "question.$": "$.question",
         },
-      })
+      });
 
       const createBackground = new tasks.LambdaInvoke(this, 'CreateBackground', {
         lambdaFunction: createBackgroundFunc.handler,
         payload: sfn.TaskInput.fromJsonPathAt("$"),
         resultPath: sfn.JsonPath.DISCARD
-      })
+      });
 
       const mediaConvertTemplate = new tasks.LambdaInvoke(this, 'MediaConvertTemplate', {
         lambdaFunction: mediaConvertTemplateFunc.handler,
@@ -57,12 +57,10 @@ export class GenerateShortStateMachine extends Construct {
           "template.$": "States.StringToJson($.Payload.body)",
         },
         resultPath: "$.result"
-      })
-
+      });
       const mediaConvertFinalJob = new tasks.MediaConvertCreateJob(this, 'MediaConvertFinalJob', {
         createJobRequest: {
           "Role": mediaConvertRole.roleArn,
-          "JobTemplate": "AWSShorts",
           "Settings": {
             "Inputs.$": "$.result.template.inputTemplate",
             "OutputGroups.$": "$.result.template.outputTemplate",

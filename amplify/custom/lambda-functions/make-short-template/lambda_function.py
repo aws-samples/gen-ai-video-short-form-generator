@@ -36,6 +36,9 @@ def create_new_video(uuid, index, bucket_name, sections):
         end_timecode = convert_seconds_to_timecode(end_time)
 
         details = {
+            "VideoSelector": {
+                "PadVideo": "BLACK"
+            },
             'FileInput': f's3://{bucket_name}/{input_file}',
             'InputClippings': [
                 {
@@ -86,11 +89,27 @@ def create_new_video(uuid, index, bucket_name, sections):
             'OutputGroupSettings': {
                 'FileGroupSettings': {
                     'Destination': f's3://{bucket_name}/{output_location}/{index}-square-final'
-                }
+                },
+                "Type": "FILE_GROUP_SETTINGS"
             },
             'Outputs': [
                 {
+                    "ContainerSettings": {
+                        "Container": "MP4",
+                        "Mp4Settings": {}
+                    },
                     'VideoDescription': {
+                        "Width": 1080,
+                        "Height": 1920,
+                        "ScalingBehavior": "FILL",
+                        "CodecSettings": {
+                            "Codec": "H_264",
+                            "H264Settings": {
+                                "MaxBitrate": 5000000,
+                                "RateControlMode": "QVBR",
+                                "SceneChangeDetect": "TRANSITION_DETECTION"
+                            }
+                        },
                         'VideoPreprocessors': {
                             'ImageInserter': {
                                 'InsertableImages': [
@@ -110,6 +129,15 @@ def create_new_video(uuid, index, bucket_name, sections):
                     },
                     'AudioDescriptions': [
                         {
+                            "AudioSourceName": "Audio Selector 1",
+                            "CodecSettings": {
+                                "Codec": "AAC",
+                                "AacSettings": {
+                                    "Bitrate": 96000,
+                                    "CodingMode": "CODING_MODE_2_0",
+                                    "SampleRate": 48000
+                                }
+                            },
                             'AudioTypeControl': 'FOLLOW_INPUT'
                         }
                     ],
