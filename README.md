@@ -2,9 +2,7 @@
 
 This repository is sample generative AI video short-form generator application using Amazon Bedrock and AWS serverless services.
 
-
-https://github.com/user-attachments/assets/65d5b33a-f59c-4894-a484-439baa9f6ff4
-
+https://github.com/user-attachments/assets/0dc48322-9d61-4e16-8381-13ae3083fa7e
 
 ## Deployment
 
