@@ -11,8 +11,18 @@ This software uses the following open source libraries, codes and fonts:
 
 ## React
 - Version: 18.2.66
-- License: [MIT License](https://opensource.org/licenses/MIT)
+- License: [MIT License](https://github.com/facebook/react/blob/main/LICENSE)
 - Homepage: https://reactjs.org/
+
+## Vite
+- Version: 5.2.0
+- License: [MIT License](https://github.com/vitejs/vite/blob/main/LICENSE)
+- Homepage: https://vitejs.dev/
+
+## react-router-dom
+- Version: 6.23.1
+- License: [MIT License](https://github.com/remix-run/react-router/blob/main/LICENSE.md)
+- Homepage: https://github.com/remix-run/react-router
 
 ## react-player
 - Version: 2.16.0
