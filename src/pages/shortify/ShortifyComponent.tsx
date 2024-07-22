@@ -83,7 +83,7 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
     setTitle(props.title);
 
     getUrl({
-      path: `videos/${props.id}/FHD/${props.tab+1}-FHD.mp4`,
+      path: `videos/${props.id}/FHD/${props.tab}-FHD.mp4`,
       options: {
         validateObjectExistence: false,
         useAccelerateEndpoint: true 
@@ -93,7 +93,7 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
     .catch(() => setFetchErr(true));
 
     downloadData({
-      path: `videos/${props.id}/ShortsTranscript/${props.tab+1}-TranscriptShorts.vtt`,
+      path: `videos/${props.id}/ShortsTranscript/${props.tab}-TranscriptShorts.vtt`,
       options: {
         useAccelerateEndpoint: true
       },
@@ -155,10 +155,10 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
   useImperativeHandle(ref, () => ({
     submit() {
       
-      updateHighlight(props.id, (props.tab+1).toString(), title);
+      updateHighlight(props.id, props.tab.toString(), title);
 
       uploadData({
-        path: `videos/${props.id}/ShortsTranscript/${props.tab+1}-TranscriptShorts.vtt`,
+        path: `videos/${props.id}/ShortsTranscript/${props.tab}-TranscriptShorts.vtt`,
         data: subtitlesToVtt(),
         options: {
           useAccelerateEndpoint: true
@@ -166,8 +166,8 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
       })
 
       const converted = convertSections();
-      generateShort(converted, props.id, props.tab+1, title)
-      .then(() => navigate(`/shorts/${props.id}/${props.tab+1}`));
+      generateShort(converted, props.id, props.tab, title)
+      .then(() => navigate(`/shorts/${props.id}/${props.tab}`));
     }
   }));
 

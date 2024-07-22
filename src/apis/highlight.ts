@@ -16,6 +16,10 @@ export const readHighlight = async (VideoName:string) => {
     VideoName: VideoName,
   });
 
+  highlight.sort((a, b) => {
+    return parseInt(a.Index) - parseInt(b.Index);
+  })
+
   return highlight;
 }
 

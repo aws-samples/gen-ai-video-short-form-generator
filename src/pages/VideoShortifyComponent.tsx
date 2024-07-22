@@ -34,7 +34,6 @@ const VideoShortify: React.FC<VideoShortifyProps> = () => {
     console.log("subscribe", id!)
     readHistory(id!).then((history) => {
       setStage(history!.stage);
-      // setActiveStepIndex(history!.stage)
     })
     const sub = subscribe(id!).subscribe({
       next: (event) => {
@@ -46,24 +45,8 @@ const VideoShortify: React.FC<VideoShortifyProps> = () => {
       }
     })
 
-    // var sub2 = sub;
-
-    // subscribeHistory(id!)
-    // .then((query) => {
-    //   sub2 = query.subscribe({
-    //     next: ({items, isSynced}) => {
-    //       console.log(items);
-    //       console.log(isSynced)
-    //     },
-    //     error: (err) => {
-    //       console.log("Error", err);
-    //     }
-    //   })
-    // })
-
     return () => {
       sub.unsubscribe();
-      // sub2.unsubscribe();
     }
   }, []);
 

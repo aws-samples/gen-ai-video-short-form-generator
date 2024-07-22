@@ -15,10 +15,8 @@ https://github.com/user-attachments/assets/0dc48322-9d61-4e16-8381-13ae3083fa7e
 3. [Manage Model Access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
 > [!IMPORTANT]
-> The application uses Amazon Bedrock in the **us-east-1** region. Please allow model access in **us-east-1**.
-
-> [!IMPORTANT]
-> The application only supports models from Anthropic Claude 3.0 and above **(3.0 Haiku, 3.0 Sonnet, 3.5 Sonnet)**.
+> - The application uses Amazon Bedrock in the **us-east-1** region. Please allow model access in **us-east-1**.
+> - The application only supports models from Anthropic Claude 3.0 and above **(3.0 Haiku, 3.0 Sonnet, 3.5 Sonnet)**.
 
 ### Sandbox Deployment
 
@@ -41,6 +39,10 @@ npm install
 npx ampx sandbox
 ```
 
+> [!IMPORTANT]
+> - It takes about 10 minutes for deployment.
+> - Do not terminate the sandbox environment while running the front-end application.
+
 4. Run frontend app
 
 ```sh
@@ -58,6 +60,9 @@ Create your own repository and follow [Amplify deployment steps](https://docs.am
 ```sh
 npx ampx sandbox delete
 ```
+
+> [!IMPORTANT]
+> You can verify if all resources have been deleted from the AWS CloudFormation console.
 
 ### Amplify Development
 

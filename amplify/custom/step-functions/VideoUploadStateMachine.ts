@@ -139,7 +139,18 @@ export class VideoUploadStateMachine extends Construct {
     const processTopicTask = new tasks.LambdaInvoke(this, 'ProcessTopic', {
       lambdaFunction: processTopic.handler,
       payload: sfn.TaskInput.fromJsonPathAt("$"),
-      resultPath: "$.ProcessedTopic"
+      resultPath: sfn.JsonPath.DISCARD
+    });
+
+    const highlightExtractMap = new sfn.Map(this, 'HighlightExtractMap', {
+      itemsPath: "$.TopicsResult.Payload.topics",
+      parameters: {
+        "topic.$": "$$.Map.Item.Value",
+        "uuid.$": "$.uuid",
+        "index.$": "$$.Map.Item.Index",
+        "bucket_name.$": "$.bucket_name",
+      },
+      resultPath: sfn.JsonPath.DISCARD
     });
 
     const extractTimeframeTask = new tasks.LambdaInvoke(this, 'ExtractTimeframe', {
@@ -293,11 +304,13 @@ export class VideoUploadStateMachine extends Construct {
           updateDDB(1)
             .next(updateEvent(1))
             .next(extractTopicsTask)
+            .next(processTopicsMap
+              .itemProcessor(processTopicTask)
+            )
             .next(updateDDB(2))
             .next(updateEvent(2))
-            .next(processTopicsMap
-              .iterator(processTopicTask
-                .next(extractTimeframeTask)
+            .next(highlightExtractMap
+              .itemProcessor(extractTimeframeTask
                 .next(checkExtractionJobStatus
                   .when(sfn.Condition.numberEquals("$.timeframe_extracted.statusCode", 200),
                     mediaConvertExtractJob
