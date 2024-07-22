@@ -44,7 +44,7 @@ def get_topics_from_transcript(script, modelID):
     <script> {script} </script>
     Extract the agenda items from the script in the order they appear. Follow these guidelines:
 
-    1. Aim for at least 9 topics. If the video is short, provide as many as possible.
+    1. Aim for at least 15 topics. If the video is short, provide as many as possible.
     2. Topics should be specific and explanatory of the video's overall content.
     3. Express each topic in the script's original language.
     4. Keep proper nouns in their original language (typically English, but can be in Korean, Japanese, or other).
