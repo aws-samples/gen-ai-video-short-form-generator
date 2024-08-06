@@ -245,6 +245,7 @@ export class VideoUploadStateMachine extends Construct {
           ]
         }
       },
+      integrationPattern: sfn.IntegrationPattern.RUN_JOB,
       resultPath: sfn.JsonPath.DISCARD
     })
 
@@ -257,7 +258,7 @@ export class VideoUploadStateMachine extends Construct {
       },
       resultPath: "$.FHD_Job"
     });
-
+  
     const startHighlightTranscriptionJob = new tasks.CallAwsService(this, 'StartHighlightTranscriptionJob', {
       service: 'transcribe',
       action: 'startTranscriptionJob',

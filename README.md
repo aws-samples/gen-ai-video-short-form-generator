@@ -1,6 +1,6 @@
 # GenAI Video Short-form Generator
 
-This repository is sample generative AI video short-form generator application using Amazon Bedrock and AWS serverless services.
+This repository is a sample generative AI video short-form generator application that uses Amazon Bedrock, Amazon Transcribe orchestrated with AWS serverless services.
 
 https://github.com/user-attachments/assets/0dc48322-9d61-4e16-8381-13ae3083fa7e
 
@@ -26,7 +26,7 @@ https://github.com/user-attachments/assets/0dc48322-9d61-4e16-8381-13ae3083fa7e
 git clone https://github.com/aws-samples/gen-ai-video-short-form-generator.git
 ```
 
-2. Install dependency
+2. Install dependencies
 
 ```sh
 cd gen-ai-video-short-form-generator
@@ -40,7 +40,7 @@ npx ampx sandbox
 ```
 
 > [!IMPORTANT]
-> - It takes about 10 minutes for deployment.
+> - It takes about 10 minutes to deploy.
 > - Do not terminate the sandbox environment while running the front-end application.
 
 4. Run frontend app
@@ -62,7 +62,7 @@ npx ampx sandbox delete
 ```
 
 > [!IMPORTANT]
-> You can verify if all resources have been deleted from the AWS CloudFormation console.
+> You can verify whether all the resources have been deleted in the AWS CloudFormation console.
 
 ### Amplify Development
 

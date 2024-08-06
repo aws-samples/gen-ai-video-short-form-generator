@@ -59,42 +59,105 @@ def extract_and_process_section(topic, script, modelID):
        
     prompt = f"""
     Human: 
-    This is a <script> of a video.
+    You are an AI assistant extracting sections from video scripts. Your two primary objectives are:
 
-    <script> {script} </script> 
-    Extract and chunk out one part of the <script> that best explains or covers the <topic> below.
+    FIND THE RIGHT SECTION:
 
-    <Topic> {topic} </Topic>
+    Carefully read the entire <script> {script} </script>.
+    Understand the given <Topic> {topic} </Topic>.
+    Identify the specific part that BEST covers the <Topic>.
+    This section MUST be the most relevant to the topic, even if not perfect.
 
-    Follow <Instructions> and think step by step to do this.
-    <Instructions>
-        <Step 1>
-            Thoroughly read and understand the entire script.
-        </Step 1>
-        <Step 2>
-            Identify the specific part of the script where the <Topic> is being covered.
-        </Step 2>
-        <Step 3>
-            From the part identified in <Step 2>, extract a section that best explains the specified topic. This extract MUST be 300 words or less.
-            IMPORTANT: Copy the text exactly as it appears. Do not fix, modify, rephrase, summarize, correct, skip, or change anything from the original <script>. This includes all punctuation, spelling, grammatical errors, and spacing.
-        </Step 3>
-        <Step 4>
-            Double-check the extracted section. Confirm that not a single character has been changed and that it can be found verbatim in the <script>. Verify that it is 300 words or less.
-        </Step 4>
-        <Step 5>
-            Create an appropriate video title in the language of the <script> for this section. Ensure that proper nouns are kept in their correct English format.
-        </Step 5>
-    </Instructions>
-    Output only the extracted section as below:
+
+    NEVER CHANGE ANYTHING:
+
+    CRITICAL: Copy the identified section EXACTLY as it appears.
+    DO NOT modify, correct, or alter the text in ANY way.
+    This includes preserving all spelling errors, grammatical mistakes, and formatting.
+    The extracted text must be found word-for-word in the original script.
+
+    Additional Instructions:
+
+    Limit the extracted section to 200 words or less.
+    Create a title for the video in the script's language (keep proper nouns in English).
+    Present your results in this format:
     <JSON>
     {{
-        "VideoTitle": "[Video title with proper nouns in its original language]",
-        "text": "[Extracted relevant section from the original transcript <= 300 words]"
+    "VideoTitle": "[Created title]",
+    "text": "[Extracted section - UNCHANGED from original]"
     }}
     </JSON>
-    Write after <JSON> and only
+
+    Before the JSON, explain your process in a <thought> tag:
+
+    Why you chose that specific section
+    How you ensured you didn't change anything
+    Any challenges in finding the right section or keeping it unaltered
+
+    Final Reminder: The accuracy of selecting the right section and preserving the original text exactly is paramount. Double-check these aspects before submitting.
+    EXAMPLES:
+    Example 1:
+    <script>
+    Welcome to our video on climate change. Today, we'll discuss the causes, affects, and potential solutions to this global issue. Climate change refers to long- tomm shifts in temrature and weather patterns. While these changes can occur naturally, human activities have been the main driver of climate change since the 1800s, primly due to the burning of fossil fuels like coal, oil, and gas.This process releases greenhouse gases into Earth's atmosphere, trapping heat and raising global temperatures. The affects of climate change are far-reaching,including more frequent and severe weather events, rising sea levels, and disruptions to ecosystems. However, there are solutions we can implement to mitigate these affects, such as transitioning to renewable energy sources, improving energy efficiency, and adopting sustainable practices in agriculture and industry.
+    </script>
+    <Topic>Causes of climate change</Topic>
+    <JSON>
+    {{
+    "VideoTitle": "The Primary Causes of Climate Change",
+    "text": "Climate change refers to long- tomm shifts in temrature and weather patterns. While these changes can occur naturally, human activities have been the main driver of climate change since the 1800s, primly due to the burning of fossil fuels like coal, oil, and gas.This process releases greenhouse gases into Earth's atmosphere, trapping heat and raising global temperatures."
+    }}
+    </JSON>
+    Example 2:
+    <script>
+    안녕하세요, 오늘은 한국의 대중문화, 특히 K-pop에 대해 얘기해볼껀데요. K-pop은 요즘 전세계적으로 인기를 끌고 있죠. BTS, BLACKPINK 같은 그룹들이 빌보드 차트에서 큰 성공을 거두면서 한국 음악의 위상이 높아졌어요. K-pop의 특징으로는 화려한 퍼포먼스, 중독성있는 멜로디, 그리고 아이돌들의 완벽한 외모가 있습니다. 아이돌 그 룹 은 데뷔 전에 몇년 안연습생 생활을 하면서춤과 노래를 연습하죠. 이런 시스템이 K pop의 뛰어난 퀄리티를 만들어내는 거에요. K-pop은 음악뿐만 아니라 패션, 뷰티 트렌드에도 큰 영향을 미치고 있어요. 팬들은 아이돌들의 스타일을 따라하려고 하죠. 요즘엔 K-pop 아이돌들이 글로벌 브랜드의 앰배서더로 활동하는 경우도 많아요. 이런 현상을 통해 한국 문화가 세계로 전파되고 있다고 할 수 있쥬? K-pop은 이제 한국을 대표하는 문화 콘텐츠로 자리잡았습니다.
+    </script>
+    <Topic>K-pop 아이돌 트레이닝</Topic>
+    <JSON>
+    {{
+    "VideoTitle": "K-pop 아이돌의 성공 비결: 철저한 트레이닝 시스템",
+    "text": "아이돌 그 룹 은 데뷔 전에 몇년 안연습생 생활을 하면서춤과 노래를 연습하죠. 이런 시스템이 K pop의 뛰어난 퀄리티를 만들어내는 거에요."
+    }}
+    </JSON>
+    Example 3:
+    <script>
+    Today we're going to talk about the water cycle, also known as the hydrologic cycle. This is the continuous movement of water within the Earth and atmosphere. It's a complex system that includes many different processes. Lets start with evaporation. This occurs when the sun heats up water in rivers, lakes, and oceans. The water turns into vapor or steam and rises up into the atmosphere. As the water vapor rises,it cools and condenses to form clouds. This process is called condensation. When the water droplets in clouds become to heavy, they fall back to Earth as precipitation. This can be in the form of rain, snow, sleet, or hail. Some of this water flows into rivers, lakes, and oceans. This is called surface runoff. Some of it soaks into the ground, which we call infiltration. This water can be taken up by plants, flow underground, or stay stored as groundwater. The cycle then repeats itself, with water continuously moving through these different stages.
+    </script>
+    <Topic>Condensation in the water cycle</Topic>
+    <JSON>
+    {{
+    "VideoTitle": "Condensation: A Key Step in the Water Cycle",
+    "text": "As the water vapor rises,it cools and condenses to form clouds. This process is called condensation. When the water droplets in clouds become to heavy, they fall back to Earth as precipitation."
+    }}
+    </JSON>
+    Example 4:
+    <script>
+    Welcome to our video on the basics of computer programing. Programing is the process of creating a set of instructions that tell a computer how to perform a task. There are many programing languages, each with it's own syntax and rules. Some popular languages include Python, Java, and C++. When you right a program, you're essentially creating a sequence of commands for the computer to follow. This sequence is called an algorithm. Programs typically start with input, process that input using various operations and calculations, and then produce some form of output. One of the fundmental concepts in programing is the use of variables. A variable is a container for storing data values. Another important concept is control structures, which allow you to control the flow of your program. These include things like if-else statements for decision making, and loops for repeating actions. As you advance in programing, you'll learn about more complex topics like functions, object-oriented programing, and data structures. Remember, learning to code takes time and practice, but it can be incredibly rewarding!
+    </script>
+    <Topic>Variables in programming</Topic>
+    <JSON>
+    {{
+    "VideoTitle": "Understanding Variables: A Fundamental Programming Concept",
+    "text": "One of the fundmental concepts in programing is the use of variables. A variable is a container for storing data values."
+    }}
+    </JSON>
+    Example 5:
+    <script>
+    Bonjour et bienvenue dans notre vidéo sur la cuisine française. La cuisine française est réputée dans le monde entier pour sa sophistication et sa finesse. Elle se caractérise par l'utilisation d'ingrédients frais et de qualité, ainsi que par des techniques de cuisson précises. L'un des piliers de la cuisine française est la sauce. Les chefs français excellent dans l'art de préparer des sauces savoureuses qui rehaussent le goût des plats. Parmi les sauces les plus célèbres, on trouve la béchamel, la hollandaise et la sauce béarnaise. La cuisine française accorde également une grande importance à la présentation des plats. Les chefs s'efforcent de créer des assiettes qui sont non seulement délicieuses, mais aussi esthétiquement agréables. Un autre aspect important de la gastronomie française est l'accord mets-vins. Chaque plat est soigneusement associé à un vin qui complète et rehausse ses saveurs. Enfin, n'oublions pas les délicieux desserts français, comme les crêpes, les profiteroles et le célèbre macaron. La cuisine française est vraiment un art qui ravit tous les sens !
+    </script>
+    <Topic>Les sauces françaises</Topic>
+    <JSON>
+    {{
+    "VideoTitle": "L'Art des Sauces dans la Cuisine Française",
+    "text": "L'un des piliers de la cuisine française est la sauce. Les chefs français excellent dans l'art de préparer des sauces savoureuses qui rehaussent le goût des plats. Parmi les sauces les plus célèbres, on trouve la béchamel, la hollandaise et la sauce béarnaise."
+    }}
+    </JSON>
     
-    \n\nAssistant:<JSON> 
+    \n\nAssistant:
+    <thought>
+    </thought>
+    <JSON>
+    </JSON>
+    
     """
 
     body = json.dumps({
@@ -109,6 +172,8 @@ def extract_and_process_section(topic, script, modelID):
     response_body = json.loads(response['body'].read())
     
     response_text = response_body['content'][0]['text']
+    
+    print(response_text)
 
     firstIndex = int(response_text.find('{'))
     endIndex = int(response_text.rfind('}'))
