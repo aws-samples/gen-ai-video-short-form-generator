@@ -7,7 +7,7 @@ s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 bedrock = boto3.client(
     service_name='bedrock-runtime',
-    region_name='us-east-1',
+    region_name='us-west-2',
     config=botocore.config.Config(connect_timeout=1000, read_timeout=1000)
 )
 

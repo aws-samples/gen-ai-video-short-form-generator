@@ -2,8 +2,6 @@ import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { storage } from './storage/resource';
 import { data, generateShortFunction } from './data/resource'
-
-// import { TranscriptUploadHandler, VideoUploadHandler, InvokeBedrock } from './custom/resource';
 import { GenerateShortStateMachine, VideoUploadStateMachine } from './custom/resource';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { CfnBucket } from 'aws-cdk-lib/aws-s3';
@@ -15,7 +13,7 @@ const backend = defineBackend({
   auth,
   storage,
   data,
-  generateShortFunction
+  generateShortFunction,
 });
 
 const s3Bucket = backend.storage.resources.bucket;

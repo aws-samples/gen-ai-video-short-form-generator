@@ -124,6 +124,7 @@ export class VideoUploadStateMachine extends Construct {
 
     const processTopicsMap = new sfn.Map(this, 'ProcessTopicsMap', {
       itemsPath: "$.TopicsResult.Payload.topics",
+      maxConcurrency: 5,
       parameters: {
         "topic.$": "$$.Map.Item.Value",
         "uuid.$": "$.uuid",
