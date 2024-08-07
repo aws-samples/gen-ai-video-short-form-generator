@@ -7,7 +7,7 @@ import os
 dynamodb = boto3.resource('dynamodb')
 bedrock = boto3.client(
     service_name='bedrock-runtime',
-    region_name='us-east-1',
+    region_name='us-west-2',
     config=botocore.config.Config(connect_timeout=1000, read_timeout=1000)
 )
 
@@ -128,36 +128,8 @@ def extract_and_process_section(topic, script, modelID):
     "VideoTitle": "Condensation: A Key Step in the Water Cycle",
     "text": "As the water vapor rises,it cools and condenses to form clouds. This process is called condensation. When the water droplets in clouds become to heavy, they fall back to Earth as precipitation."
     }}
-    </JSON>
-    Example 4:
-    <script>
-    Welcome to our video on the basics of computer programing. Programing is the process of creating a set of instructions that tell a computer how to perform a task. There are many programing languages, each with it's own syntax and rules. Some popular languages include Python, Java, and C++. When you right a program, you're essentially creating a sequence of commands for the computer to follow. This sequence is called an algorithm. Programs typically start with input, process that input using various operations and calculations, and then produce some form of output. One of the fundmental concepts in programing is the use of variables. A variable is a container for storing data values. Another important concept is control structures, which allow you to control the flow of your program. These include things like if-else statements for decision making, and loops for repeating actions. As you advance in programing, you'll learn about more complex topics like functions, object-oriented programing, and data structures. Remember, learning to code takes time and practice, but it can be incredibly rewarding!
-    </script>
-    <Topic>Variables in programming</Topic>
-    <JSON>
-    {{
-    "VideoTitle": "Understanding Variables: A Fundamental Programming Concept",
-    "text": "One of the fundmental concepts in programing is the use of variables. A variable is a container for storing data values."
-    }}
-    </JSON>
-    Example 5:
-    <script>
-    Bonjour et bienvenue dans notre vidéo sur la cuisine française. La cuisine française est réputée dans le monde entier pour sa sophistication et sa finesse. Elle se caractérise par l'utilisation d'ingrédients frais et de qualité, ainsi que par des techniques de cuisson précises. L'un des piliers de la cuisine française est la sauce. Les chefs français excellent dans l'art de préparer des sauces savoureuses qui rehaussent le goût des plats. Parmi les sauces les plus célèbres, on trouve la béchamel, la hollandaise et la sauce béarnaise. La cuisine française accorde également une grande importance à la présentation des plats. Les chefs s'efforcent de créer des assiettes qui sont non seulement délicieuses, mais aussi esthétiquement agréables. Un autre aspect important de la gastronomie française est l'accord mets-vins. Chaque plat est soigneusement associé à un vin qui complète et rehausse ses saveurs. Enfin, n'oublions pas les délicieux desserts français, comme les crêpes, les profiteroles et le célèbre macaron. La cuisine française est vraiment un art qui ravit tous les sens !
-    </script>
-    <Topic>Les sauces françaises</Topic>
-    <JSON>
-    {{
-    "VideoTitle": "L'Art des Sauces dans la Cuisine Française",
-    "text": "L'un des piliers de la cuisine française est la sauce. Les chefs français excellent dans l'art de préparer des sauces savoureuses qui rehaussent le goût des plats. Parmi les sauces les plus célèbres, on trouve la béchamel, la hollandaise et la sauce béarnaise."
-    }}
-    </JSON>
     
     \n\nAssistant:
-    <thought>
-    </thought>
-    <JSON>
-    </JSON>
-    
     """
 
     body = json.dumps({

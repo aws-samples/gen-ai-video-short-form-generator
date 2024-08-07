@@ -15,8 +15,8 @@ https://github.com/user-attachments/assets/0dc48322-9d61-4e16-8381-13ae3083fa7e
 3. [Manage Model Access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
 > [!IMPORTANT]
-> - The application uses Amazon Bedrock in the **us-east-1** region. Please allow model access in **us-east-1**.
-> - The application only supports models from Anthropic Claude 3.0 and above **(3.0 Haiku, 3.0 Sonnet, 3.5 Sonnet)**.
+> - The application uses Amazon Bedrock in the **us-west-2** region. Please allow model access in **us-west-2**.
+> - The application only supports models from Anthropic Claude 3.0 and above **(3.0 Haiku, 3.0 Sonnet, 3.0 Opus, 3.5 Sonnet)**.
 
 ### Sandbox Deployment
 
