@@ -75,7 +75,12 @@ def get_topics_from_transcript(script, modelID):
         "temperature": 0.5,
         "top_p": 0.9
     })
+
+    #for test, to delete later
+    # modelID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+
     response = bedrock.invoke_model(body=body, accept='*/*', contentType='application/json', modelId=modelID)
+
     response_body = json.loads(response['body'].read())
     rawTopics = response_body['content'][0]['text']
 

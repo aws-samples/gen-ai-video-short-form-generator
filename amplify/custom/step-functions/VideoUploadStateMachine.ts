@@ -163,11 +163,10 @@ export class VideoUploadStateMachine extends Construct {
         "index.$": "$.Payload.index",
         "uuid.$": "$.Payload.uuid",
         "raw_file_path.$": "$.Payload.raw_file_path",
-        "start_timecode.$": "$.Payload.start_timecode",
-        "end_timecode.$": "$.Payload.end_timecode",
+        "timeframes.$": "$.Payload.timeframes",
         "output_destination.$": "$.Payload.output_destination"
       },
-      resultPath: "$.timeframe_extracted"
+      resultPath: "$.timeframe_extracted",
     });
 
     const checkExtractionJobStatus = new sfn.Choice(this, 'CheckExtractionJobStatus');
@@ -189,12 +188,7 @@ export class VideoUploadStateMachine extends Construct {
               },
               "VideoSelector": {},
               "TimecodeSource": "ZEROBASED",
-              "InputClippings": [
-                {
-                  "StartTimecode.$": "$.timeframe_extracted.start_timecode",
-                  "EndTimecode.$": "$.timeframe_extracted.end_timecode"
-                }
-              ]
+              "InputClippings.$": "$.timeframe_extracted.timeframes"
             }
           ],
           "OutputGroups": [ 

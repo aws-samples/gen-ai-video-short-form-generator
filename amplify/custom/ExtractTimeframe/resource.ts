@@ -24,7 +24,7 @@ export class ExtractTimeframe extends Construct {
         BUCKET_NAME: props.bucket.bucketName,
         HIGHLIGHT_TABLE_NAME: props.highlightTable.tableName,
       },
-      timeout: Duration.seconds(180),
+      timeout: Duration.seconds(600),
     });
 
     props.bucket.grantReadWrite(this.handler);
