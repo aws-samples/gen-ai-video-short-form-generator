@@ -51,7 +51,7 @@ def find_timeframes_for_script(highlight_script, json_content):
         best_match_end = 0
 
         for j in range(len(words_with_timestamp)):
-            window_size = min(len(cleaned_segment.split()) + 5, len(words_with_timestamp) - j)
+            window_size = min(len(cleaned_segment.split()) + 4, len(words_with_timestamp) - j)
             window = ' '.join(item['alternatives'][0]['content'] for item in words_with_timestamp[j:j+window_size] if item['type'] == 'pronunciation')
             match_ratio = string_similarity(cleaned_segment, window)
             

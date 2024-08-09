@@ -6,38 +6,27 @@ from io import BytesIO
 s3 = boto3.client('s3')
 
 def wrap_text(text, width, font):
-    text_lines = []
-    text_line = []
-    text = text.replace('\n', ' [br] ')
-    words = text.split()
-
-    for word in words:
-        if word == '[br]':
-            text_lines.append(' '.join(text_line))
-            text_line = []
-            continue
-        text_line.append(word)
-        left, _, right, _ = font.getbbox(' '.join(text_line))
-        w = right - left
-        if w > width:
-            text_line.pop()
-            text_lines.append(' '.join(text_line))
-            text_line = [word]
-
-    if text_line:
-        text_lines.append(' '.join(text_line))
-
-    return text_lines
-
-def adjust_font_size(question, width, initial_font_size, font_path):
-    font_size = initial_font_size
-    font = load_font(font_path, font_size)
-    lines = wrap_text(question, width, font)
-    while len(lines) > 2:
-        font_size -= 1
-        font = load_font(font_path, font_size)
-        lines = wrap_text(question, width, font)
-    return font, lines
+    lines = []
+    paragraphs = text.split('\\n')  # Split by literal '\n'
+    for paragraph in paragraphs:
+        words = paragraph.split()
+        current_line = []
+        for word in words:
+            current_line.append(word)
+            left, _, right, _ = font.getbbox(' '.join(current_line))
+            if right - left > width:
+                if len(current_line) > 1:
+                    current_line.pop()
+                    lines.append(' '.join(current_line))
+                    current_line = [word]
+                else:
+                    lines.append(word)
+                    current_line = []
+        if current_line:
+            lines.append(' '.join(current_line))
+        if not paragraph:  # Add empty line for empty paragraphs
+            lines.append('')
+    return lines
 
 def load_font(font_path, size):
     try:
@@ -45,13 +34,10 @@ def load_font(font_path, size):
         return font
     except IOError:
         print("Failed to load the primary font. Falling back to secondary font.")
-
         return None
 
 def lambda_handler(event, context):
-    
     square_source_key = 'assets/shorts-background-1x1.png'
-
     bucket_name = event["bucket_name"]   
     uuid = event['videoId']
     index = event['highlight']
@@ -65,22 +51,35 @@ def lambda_handler(event, context):
     
     draw_square = ImageDraw.Draw(base_image_square)
     
-    font_path = './NotoSansKR-Regular.ttf'
-    text_size = 70
+    font_path = './NotoSansKR-SemiBold.ttf'
+    text_size = 80  # You can adjust this size as needed
     
-    font_square, multiline_square = adjust_font_size(question, 900, text_size, font_path)
+    font_square = load_font(font_path, text_size)
+    multiline_square = wrap_text(question, 1020, font_square)
+    
+    # Debug print
+    print("Parsed lines:", multiline_square)
     
     W = 1080
     H = 1920
     white = (255, 255, 255)
     
-    text_y_square = (H - len(multiline_square) * font_square.size) / 2 - 720
-
+    # Calculate the total height of all lines
+    total_text_height = sum([font_square.getbbox(line)[3] - font_square.getbbox(line)[1] for line in multiline_square])
+    line_spacing = 10  # Adjust this value to increase or decrease space between lines
+    total_text_height += line_spacing * (len(multiline_square) - 1)
+    
+    # Start drawing from this y-position
+    text_y_square = (H - total_text_height) / 2 - 720
+    
     for line in multiline_square:
-        w = draw_square.textlength(line, font=font_square)
-        text_x = (W - w) / 2
+        bbox = font_square.getbbox(line)
+        line_width = bbox[2] - bbox[0]
+        line_height = bbox[3] - bbox[1]
+        
+        text_x = (W - line_width) / 2
         draw_square.text((text_x, text_y_square), text=line, font=font_square, fill=white)
-        text_y_square += font_square.size + 10
+        text_y_square += line_height + line_spacing
     
     buffer_square = BytesIO()
     base_image_square.save(buffer_square, format='png')
