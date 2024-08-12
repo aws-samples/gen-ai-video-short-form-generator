@@ -1,6 +1,8 @@
 # GenAI Video Short-form Generator
 
 This repository is a sample generative AI video short-form generator application that uses Amazon Bedrock, Amazon Transcribe orchestrated with AWS serverless services.
+This sample application takes in long videos, understands it, and extracts and generate up to 15 short-form highlight video. 
+It uses distant parts from the video to make more than 10 engaging, short-form content. 
 
 https://github.com/user-attachments/assets/0dc48322-9d61-4e16-8381-13ae3083fa7e
 
