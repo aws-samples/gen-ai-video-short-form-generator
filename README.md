@@ -8,6 +8,10 @@ The app also gives flexibility in choosing which frame to put in, and also the a
 https://github.com/user-attachments/assets/8c5d65b0-7b30-42c6-9ef4-b47da08f07b4
 
 
+# Architecture
+
+![Image (17)](https://github.com/user-attachments/assets/2add325d-3155-414c-ac0a-ab1b0c07831c)
+
 ## Deployment
 
 ### Prerequisites
