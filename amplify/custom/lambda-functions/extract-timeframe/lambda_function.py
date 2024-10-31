@@ -16,21 +16,20 @@ dynamodb = boto3.resource('dynamodb')
 # Get environment variables
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 HIGHLIGHT_TABLE_NAME = os.environ["HIGHLIGHT_TABLE_NAME"]
-SIMILARITY_THRESHOLD = 0.6  # Adjust this value as needed
 
 import difflib
 
 def string_similarity(s1, s2):
-    # Convert strings to lists of characters, removing spaces
-    s1 = s1.replace(" ", "").lower()
-    s2 = s2.replace(" ", "").lower()
+    # Keep spaces, only lowercase
+    s1 = s1.lower().strip()
+    s2 = s2.lower().strip()
     
-    # Convert strings to UTF-8 encoded byte objects
-    b1 = s1.encode('utf-8')
-    b2 = s2.encode('utf-8')
+    # Use more sophisticated tokenization
+    words1 = s1.split()
+    words2 = s2.split()
     
-    # Use diff_bytes() for comparison
-    matcher = difflib.SequenceMatcher(None, b1, b2)
+    # Use sequence matcher on words
+    matcher = difflib.SequenceMatcher(None, words1, words2)
     return matcher.ratio()
 
 def extract_full_transcript(json_content):
@@ -40,72 +39,118 @@ def extract_words_with_timestamp(json_content):
     return json_content['results']['items']
 
 def find_timeframes_for_script(highlight_script, json_content):
+    logger.debug("Starting find_timeframes_for_script")
+    logger.debug(f"Input highlight script: {highlight_script}")
+    
     words_with_timestamp = json_content['results']['items']
+    logger.debug(f"Total words in transcript: {len(words_with_timestamp)}")
+    
     segments = [seg.strip() for seg in highlight_script.split("[...]") if seg.strip()]
+    logger.debug(f"Split segments: {segments}")
+    logger.debug(f"Number of segments: {len(segments)}")
+    
     timeframes = []
 
     for i, segment in enumerate(segments):
+        logger.debug(f"\nProcessing segment {i+1}/{len(segments)}: {segment}")
         cleaned_segment = segment.lower()
         best_match_ratio = 0
         best_match_start = 0
         best_match_end = 0
+        best_matching_window = ""
+
+        # Calculate window size and convert to integer
+        base_window_size = len(cleaned_segment.split())
+        window_size = min(int(base_window_size * 1.4), len(words_with_timestamp))
+        logger.debug(f"Base window size: {base_window_size}, Adjusted window size: {window_size}")
 
         for j in range(len(words_with_timestamp)):
-            window_size = min(len(cleaned_segment.split()) + 4, len(words_with_timestamp) - j)
-            window = ' '.join(item['alternatives'][0]['content'] for item in words_with_timestamp[j:j+window_size] if item['type'] == 'pronunciation')
+            # Ensure we don't exceed array bounds
+            current_window_size = min(window_size, len(words_with_timestamp) - j)
+            
+            window = ' '.join(item['alternatives'][0]['content'] 
+                            for item in words_with_timestamp[j:j+current_window_size] 
+                            if item['type'] == 'pronunciation')
+            
             match_ratio = string_similarity(cleaned_segment, window)
             
             if match_ratio > best_match_ratio:
                 best_match_ratio = match_ratio
                 best_match_start = j
-                best_match_end = j + window_size
+                best_match_end = j + current_window_size
+                best_matching_window = window
+                logger.debug(f"New best match found at position {j}:")
+                logger.debug(f"Window: {window}")
+                logger.debug(f"Match ratio: {match_ratio}")
 
-        if best_match_ratio > 0.9:  # Adjust this threshold as needed
+        logger.debug(f"\nFinal best match for segment {i+1}:")
+        logger.debug(f"Original segment: {cleaned_segment}")
+        logger.debug(f"Best matching window: {best_matching_window}")
+        logger.debug(f"Best match ratio: {best_match_ratio}")
+        logger.debug(f"Best match indices: {best_match_start} to {best_match_end}")
+
+        if best_match_ratio > 0.70:
             start_index = best_match_start
             end_index = best_match_end - 1 
 
+            # Debug original indices
+            logger.debug(f"Initial indices - start: {start_index}, end: {end_index}")
+
             while start_index < end_index and words_with_timestamp[start_index]['type'] != 'pronunciation':
                 start_index += 1
+                logger.debug(f"Adjusted start index to: {start_index}")
             
             while end_index > start_index and words_with_timestamp[end_index]['type'] != 'pronunciation':
                 end_index -= 1
+                logger.debug(f"Adjusted end index to: {end_index}")
             
             start_time = float(words_with_timestamp[start_index]['start_time'])
             end_time = float(words_with_timestamp[end_index]['end_time'])
             
-            timeframes.append((start_time, end_time, i))  # Add segment index
+            timeframes.append((start_time, end_time, i))
             
-            logger.info(f"Timeframe found for segment {i+1}: {start_time} - {end_time}")
-            logger.debug(f"Match ratio: {best_match_ratio}")
-            logger.debug(f"Matched text: {' '.join(item['alternatives'][0]['content'] for item in words_with_timestamp[start_index:end_index+1] if item['type'] == 'pronunciation')}")
+            logger.debug(f"Final timeframe for segment {i+1}:")
+            logger.debug(f"Start time: {start_time}")
+            logger.debug(f"End time: {end_time}")
+            logger.debug(f"Start word: {words_with_timestamp[start_index]['alternatives'][0]['content']}")
+            logger.debug(f"End word: {words_with_timestamp[end_index]['alternatives'][0]['content']}")
         else:
-            logger.warning(f"Could not find a good match for segment {i+1}")
+            logger.warning(f"No good match found for segment {i+1}")
+            logger.warning(f"Segment text: {cleaned_segment}")
+            logger.warning(f"Best match ratio found: {best_match_ratio}")
+            logger.warning(f"Best matching window: {best_matching_window}")
+
+    logger.debug("\nAll timeframes before sorting:")
+    logger.debug(timeframes)
 
     # Sort timeframes based on start time
-
-    print("original timeframes")
-    print(timeframes)
     sorted_timeframes = sorted(timeframes, key=lambda x: (x[0]))
-    print("sorted timeframes")
-    print(sorted_timeframes)
+    logger.debug("\nSorted timeframes:")
+    logger.debug(sorted_timeframes)
 
     merged_timeframes = []
     for start, end, index in sorted_timeframes:
         if not merged_timeframes or start > merged_timeframes[-1][1]:
             merged_timeframes.append([start, end, index])
+            logger.debug(f"Added new timeframe: {[start, end, index]}")
         else:
             merged_timeframes[-1][1] = max(merged_timeframes[-1][1], end)
             merged_timeframes[-1][2] = min(merged_timeframes[-1][2], index)
+            logger.debug(f"Merged with previous timeframe: {merged_timeframes[-1]}")
 
-    print("merged timeframes")
-    print(merged_timeframes)
+    logger.debug("\nMerged timeframes:")
+    logger.debug(merged_timeframes)
 
-    # Check if the order matches the original segment order
+    # Check ordering
     if [t[2] for t in merged_timeframes] != sorted([t[2] for t in merged_timeframes]):
-        logger.warning("The order of matched segments differs from the original highlight order")
+        logger.warning("WARNING: Final timeframes are not in original segment order")
+        logger.warning(f"Original order indices: {[t[2] for t in merged_timeframes]}")
+        logger.warning(f"Sorted order indices: {sorted([t[2] for t in merged_timeframes])}")
 
     # Remove the segment index from the final output
     final_timeframes = [(start, end) for start, end, _ in merged_timeframes]
+    logger.debug("\nFinal output timeframes:")
+    logger.debug(final_timeframes)
 
     return final_timeframes
 

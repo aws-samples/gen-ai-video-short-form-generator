@@ -26,6 +26,13 @@ https://github.com/user-attachments/assets/8c5d65b0-7b30-42c6-9ef4-b47da08f07b4
 > - The application uses Amazon Bedrock in the **us-west-2** region. Please allow model access in **us-west-2**.
 > - The application only supports models from Anthropic Claude 3.0 and above **(3.0 Haiku, 3.0 Sonnet, 3.0 Opus, 3.5 Sonnet)**.
 
+### Version 2 Update (10/31/24)
+1. Revised and Improved Prompt for extracting and processing topics
+2. Added feature to edit video in a more vertical ratio (3:4)
+3. Improved Timeframe Matching accuracy after highlight extraction 
+4. Added "Upload with Subtitles" Option for faster processing
+5. Added Claude 3.5 v2 as an option 
+
 ### Sandbox Deployment
 
 1. Clone repository

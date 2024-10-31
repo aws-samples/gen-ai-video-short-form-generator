@@ -3,14 +3,11 @@
   position: absolute;
   top: 0px;
   left: 0px;
-  height: 100px;
-  width: 100px;
   z-index: 100;
   box-shadow: 0 0 2000px 2000px rgb(0 0 0 / 60%);
   touch-action: none;
   cursor: move;
 }
-
 
 .container {
   position: relative;
@@ -28,4 +25,11 @@
   background-color: #0097df;
   cursor: nwse-resize;
   touch-action: none;
+}
+
+/* Add this class for the player */
+.player {
+  width: 100%;
+  height: 100%;
+  background-color: black;
 }

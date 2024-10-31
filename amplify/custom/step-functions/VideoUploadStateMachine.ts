@@ -85,6 +85,18 @@ export class VideoUploadStateMachine extends Construct {
       }
     });
 
+    const checkSubtitles = new tasks.CallAwsService(this, 'CheckSubtitles', {
+      service: 's3',
+      action: 'headObject',
+      iamAction: 's3:HeadObject',
+      iamResources: ['*'],
+      parameters: {
+        "Bucket.$": "$.bucket_name",
+        "Key.$": "States.Format('videos/{}/Transcript.json', $.uuid)"
+      },
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
     const startTranscriptionJob = new tasks.CallAwsService(this, 'StartTranscriptionJob', {
       service: 'transcribe',
       action: 'startTranscriptionJob',
@@ -127,6 +139,7 @@ export class VideoUploadStateMachine extends Construct {
       maxConcurrency: 5,
       parameters: {
         "topic.$": "$$.Map.Item.Value",
+        "topics.$": "$.TopicsResult.Payload.topics",
         "uuid.$": "$.uuid",
         "index.$": "$$.Map.Item.Index",
         "script.$": "$.TopicsResult.Payload.script",
@@ -290,58 +303,64 @@ export class VideoUploadStateMachine extends Construct {
 
     const checkHighlightTranscriptionJobStatus = new sfn.Choice(this, 'CheckHighlightTranscriptionJobStatus');
 
+    const sharedUpdateDDB1 = updateDDB(1);
+
     // Definition body
     const definitionBody = prepareParameters
-      .next(startTranscriptionJob)
-      .next(waitForTranscriptionJob)
-      .next(getTranscriptionJobStatus)
-      .next(checkTranscriptionJobStatus
-        .when(sfn.Condition.stringEquals("$.jobStatus.TranscriptionJob.TranscriptionJobStatus", "COMPLETED"),
-          updateDDB(1)
-            .next(updateEvent(1))
-            .next(extractTopicsTask)
-            .next(processTopicsMap
-              .itemProcessor(processTopicTask)
-            )
-            .next(updateDDB(2))
-            .next(updateEvent(2))
-            .next(highlightExtractMap
-              .itemProcessor(extractTimeframeTask
-                .next(checkExtractionJobStatus
-                  .when(sfn.Condition.numberEquals("$.timeframe_extracted.statusCode", 200),
-                    mediaConvertExtractJob
-                      .next(mediaConvertExtractJobParam)
-                      .next(startHighlightTranscriptionJob)
-                      .next(waitForHighlightTranscriptionJob)
-                      .next(getHighlightTranscriptionJobStatus)
-                      .next(checkHighlightTranscriptionJobStatus
-                        .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "COMPLETED"),
-                          new sfn.Succeed(this, 'HighlightTranscriptionSucceeded')
-                        )
-                        .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "FAILED"),
-                          new sfn.Fail(this, 'HighlightTranscriptionFailed', {
-                            cause: "Highlight transcription job failed",
-                            error: "HighlightTranscriptionJobFailed"
-                          })
-                        )
-                        .otherwise(waitForHighlightTranscriptionJob)
-                      )
-                  )
-                  .otherwise(new sfn.Pass(this, 'ExtractionFailed', {}))
-                )
+      .next(checkSubtitles
+        .addCatch(startTranscriptionJob
+          .next(waitForTranscriptionJob)
+          .next(getTranscriptionJobStatus)
+          .next(checkTranscriptionJobStatus
+            .when(sfn.Condition.stringEquals("$.jobStatus.TranscriptionJob.TranscriptionJobStatus", "COMPLETED"), sharedUpdateDDB1)
+            .when(sfn.Condition.stringEquals("$.jobStatus.TranscriptionJob.TranscriptionJobStatus", "FAILED"),
+                new sfn.Fail(this, 'TranscriptionJobFailed', {
+                  cause: "Transcription job failed",
+                  error: "TranscriptionJobFailed"
+                })
               )
+            .otherwise(waitForTranscriptionJob)
+          )
+          , {resultPath: sfn.JsonPath.DISCARD}
+        )
+      )
+      .next(sharedUpdateDDB1)
+      .next(updateEvent(1))
+      .next(extractTopicsTask)
+      .next(processTopicsMap
+        .itemProcessor(processTopicTask)
+      )
+      .next(updateDDB(2))
+      .next(updateEvent(2))
+      .next(highlightExtractMap
+        .itemProcessor(extractTimeframeTask
+          .next(checkExtractionJobStatus
+            .when(sfn.Condition.numberEquals("$.timeframe_extracted.statusCode", 200),
+              mediaConvertExtractJob
+                .next(mediaConvertExtractJobParam)
+                .next(startHighlightTranscriptionJob)
+                .next(waitForHighlightTranscriptionJob)
+                .next(getHighlightTranscriptionJobStatus)
+                .next(checkHighlightTranscriptionJobStatus
+                  .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "COMPLETED"),
+                    new sfn.Succeed(this, 'HighlightTranscriptionSucceeded')
+                  )
+                  .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "FAILED"),
+                    new sfn.Fail(this, 'HighlightTranscriptionFailed', {
+                      cause: "Highlight transcription job failed",
+                      error: "HighlightTranscriptionJobFailed"
+                    })
+                  )
+                  .otherwise(waitForHighlightTranscriptionJob)
+                )
             )
-            .next(updateDDB(3))
-            .next(updateEvent(3))
+            .otherwise(new sfn.Pass(this, 'ExtractionFailed', {}))
+          )
         )
-        .when(sfn.Condition.stringEquals("$.jobStatus.TranscriptionJob.TranscriptionJobStatus", "FAILED"),
-          new sfn.Fail(this, 'TranscriptionJobFailed', {
-            cause: "Transcription job failed",
-            error: "TranscriptionJobFailed"
-          })
-        )
-        .otherwise(waitForTranscriptionJob)
-      );
+      )
+      .next(updateDDB(3))
+      .next(updateEvent(3))
+
 
     this.stateMachine = new sfn.StateMachine(this, 'VideoUploadStateMachine', {
       definitionBody: sfn.DefinitionBody.fromChainable(definitionBody),

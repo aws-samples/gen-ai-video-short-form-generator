@@ -2,6 +2,7 @@ import json
 import boto3
 import botocore
 import os
+import time
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -42,16 +43,22 @@ def get_topics_from_transcript(script, modelID):
     Human:
     Below is a transcript of a video.
     <script> {script} </script>
-    Extract the agenda items from the script in the order they appear. Follow these guidelines:
+
+    Extract distinct segments/topics that could work as standalone short-form content from the script. Follow these guidelines:
 
     1. Aim for at least 15 topics. If the video is short, provide as many as possible.
-    2. Topics should be specific and explanatory of the video's overall content.
+    2. Each topic should be:
+    - Self-contained (can be understood without full context)
+    - Engaging as a standalone clip
+    - Have a clear focus/message
+    - Not overlap significantly with other topics
+
     3. Express each topic in the script's original language.
     4. Keep proper nouns in their original language (typically English, but can be in Korean, Japanese, or other).
     5. Format each topic like a concise video title, using 8 words or less.
-    6. Ensure topics follow the video's chronological order.
+    6. Topics must follow the video's chronological order.
 
-    Present the extracted agenda in this JSON format:
+    Present the extracted topics in this JSON format:
     <JSON>
     {{
     "Topics": [
@@ -59,12 +66,12 @@ def get_topics_from_transcript(script, modelID):
         "Topic2",
         "Topic3",
         ...
-        "Topic9"
+        "Topic15"
     ]
     }}
     </JSON>
     Respond only with the JSON structure above, filled with the extracted topics.
-        
+
     \n\nAssistant: <JSON>
     """
 

@@ -15,15 +15,14 @@ def convert_timecode_to_seconds(timecode):
     hours, minutes, seconds, frames = map(int, timecode.split(':'))
     return hours * 3600 + minutes * 60 + seconds + frames / 25.0
 
-def create_new_video(uuid, index, bucket_name, sections):
-    
+def create_new_video(uuid, index, bucket_name, sections, vertical):
     input_file = f'videos/{uuid}/FHD/{index}-FHD.mp4'
     subtitle = f'videos/{uuid}/ShortsTranscript/{index}-TranscriptShorts.vtt'
     output_location = f'videos/{uuid}/Final'
     
     InputsTemplates = []
 
-    start_time = 0.0  # Start at the very beginning
+    start_time = 0.0
     buffer_time = 0
     sections_total_duration = 0.0
     
@@ -53,10 +52,10 @@ def create_new_video(uuid, index, bucket_name, sections):
                 'Y': int(section["Yoffset"])
             },
             "Position": {
-                "Height": 1080,
+                "Height": 1440 if vertical else 1080,
                 "Width": 1080,
                 "X": 0,
-                "Y": 420
+                "Y": 240 if vertical else 420
             },
             "AudioSelectors": {
                 "Audio Selector 1": {
@@ -77,18 +76,17 @@ def create_new_video(uuid, index, bucket_name, sections):
         }
         InputsTemplates.append(details)
         
-        start_time = end_time + (buffer_time if i < len(sections) - 1 else 0)  # Move to the next clip start
+        start_time = end_time + (buffer_time if i < len(sections) - 1 else 0)
     
-    # Calculate the total duration of sections in milliseconds
     sections_duration_ms = int(sections_total_duration * 1000 + 40 * (len(sections)-1))
 
-    background_file_square = f's3://{bucket_name}/videos/{uuid}/background/{index}-square.png'
+    background_file = f's3://{bucket_name}/videos/{uuid}/background/{index}.png'
     
     OutputTemplate = [
         {
             'OutputGroupSettings': {
                 'FileGroupSettings': {
-                    'Destination': f's3://{bucket_name}/{output_location}/{index}-square-final'
+                    'Destination': f's3://{bucket_name}/{output_location}/{index}-final'
                 },
                 "Type": "FILE_GROUP_SETTINGS"
             },
@@ -117,7 +115,7 @@ def create_new_video(uuid, index, bucket_name, sections):
                                         'Width': 1080,
                                         'Height': 1920,
                                         'Opacity': 100,
-                                        'ImageInserterInput': background_file_square,
+                                        'ImageInserterInput': background_file,
                                         'ImageX': 0,
                                         'ImageY': 0,
                                         'Layer': 1,
@@ -155,7 +153,7 @@ def create_new_video(uuid, index, bucket_name, sections):
                                     'FontScript': 'AUTOMATIC',
                                     'FontSize': 36,
                                     'TeletextSpacing': 'PROPORTIONAL',
-                                    'YPosition': 1550
+                                    'YPosition': 1700 if vertical else 1550
                                 }
                             },
                             "LanguageCode": 'KOR'
@@ -168,15 +166,14 @@ def create_new_video(uuid, index, bucket_name, sections):
     
     return InputsTemplates, OutputTemplate
 
-# Lambda handler function
 def lambda_handler(event, context):
-    
     bucket_name = event["bucket_name"]
     sections = event["inputs"]
     uuid = event['videoId']
     index = event['highlight']
+    vertical = event['inputs'][0]['Vertical']
     
-    inputTemplate, outputTemplate = create_new_video(uuid, index, bucket_name, sections)
+    inputTemplate, outputTemplate = create_new_video(uuid, index, bucket_name, sections, vertical)
     
     return {
         'statusCode': 200,
