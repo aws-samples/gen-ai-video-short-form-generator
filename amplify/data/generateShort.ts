@@ -1,7 +1,8 @@
 import type { Schema } from "./resource";
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
+import {v4 as uuidv4} from 'uuid';
 
-const sfnClient = new SFNClient(); 
+const sfnClient = new SFNClient();
 
 export const handler: Schema["generateShort"]["functionHandler"] = async (
   event,
@@ -9,12 +10,13 @@ export const handler: Schema["generateShort"]["functionHandler"] = async (
 ) => {
   // User prompt
   const {inputs, videoId, highlight, question} = event.arguments;
-
-  const stateMachineArn = process.env.STATE_MACHINE;
   
+  // Use the GenerateShortStateMachine
+  const stateMachineArn = process.env.STATE_MACHINE;
+  const videoName = uuidv4()
   try {
     const input = JSON.stringify({
-      inputs, videoId, highlight, question, bucket_name: process.env.BUCKET_NAME
+      inputs, videoId, highlight, question, bucket_name: process.env.BUCKET_NAME, videoName: videoName
     });
 
     const command = new StartExecutionCommand({
@@ -23,11 +25,12 @@ export const handler: Schema["generateShort"]["functionHandler"] = async (
     });
 
     const result = await sfnClient.send(command);
-    console.log(result)
 
     return JSON.stringify({
       statusCode: 200,
-      body: "success"
+      body: {
+        videoName: videoName
+      }
     })
 
   } catch (error) {

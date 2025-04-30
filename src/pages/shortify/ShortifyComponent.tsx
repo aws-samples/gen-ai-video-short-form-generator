@@ -9,12 +9,13 @@ import {
   SpaceBetween,
   Alert,
   SegmentedControl,
+  Link
 } from '@cloudscape-design/components';
 import { useNavigate } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { animated, useSpring } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { downloadData, getUrl, uploadData } from 'aws-amplify/storage';
+import { downloadData, getUrl, uploadData,  } from 'aws-amplify/storage';
 import { updateHighlight } from '../../apis/highlight';
 import { generateShort } from '../../apis/graphql';
 
@@ -64,7 +65,7 @@ type AspectRatio = '1:1' | '9:12';
 const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
 
   const navigate = useNavigate();
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<ReactPlayer>(null);
   const [played, setPlayed] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
@@ -169,6 +170,17 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
     handleReset();
   }, [aspectRatio])
 
+  useEffect(() => {
+
+    api.set({
+      x: sections[curSection].section.x,
+      y: sections[curSection].section.y,
+      width: sections[curSection].section.width,
+      height: sections[curSection].section.height,
+    });
+
+  }, [curSection])
+
   useImperativeHandle(ref, () => ({
     submit() {
       
@@ -184,7 +196,17 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
 
       const converted = convertSections();
       generateShort(converted, props.id, props.tab, title)
-      .then(() => navigate(`/shorts/${props.id}/${props.tab}`));
+      .then((res) => {
+
+        const response = JSON.parse(res.data!)
+        if(response.statusCode !== 200) {
+          window.alert("생성 중 오류가 발생했습니다.")
+          return;
+        }
+
+        const videoName = response.body.videoName;
+        navigate(`/shorts/${props.id}/${videoName}`)
+      });
     }
   }));
 
@@ -206,6 +228,8 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
     sections.forEach((playerSection) => {
       const {start, end, section} = playerSection;
       const {x, y, height} = section;
+
+      console.log(containerRef.current?.clientWidth, containerRef.current?.clientHeight)
   
       var xOffset = Math.floor(x/containerRef.current!.clientWidth*1920);
       xOffset % 2 !== 0 ? xOffset-- : xOffset;
@@ -222,7 +246,7 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
         : Math.floor(croppedHeight * 9/12);
       croppedWidth % 2 !== 0 ? croppedWidth-- : croppedWidth;
   
-      const length = (end-start) * playerRef.current.getDuration();
+      const length = (end-start) * playerRef.current!.getDuration();
   
       inputs.push({
         CropHeight: croppedHeight.toString(),
@@ -344,47 +368,7 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
 
   const handleAspectRatioChange = ({ detail }: { detail: { selectedId: string } }) => {    
     const newAspectRatio = detail.selectedId as AspectRatio;
-    
-    // // Calculate new dimensions
-    // const currentWidth = width.get();
-    // const newHeight = newAspectRatio === '1:1' 
-    //   ? currentWidth 
-    //   : (currentWidth * 12) / 9;
-  
-    // Update all state synchronously
     setAspectRatio(newAspectRatio);
-    
-    // // Update spring with immediate flag
-    // api.start({
-    //   to: {
-    //     width: currentWidth,
-    //     height: newHeight
-    //   },
-    //   immediate: true
-    // });
-  
-    // // Update all sections with new dimensions
-    // const newSections = sections.map(section => ({
-    //   ...section,
-    //   section: {
-    //     ...section.section,
-    //     width: currentWidth,
-    //     height: newHeight
-    //   }
-    // }));
-  
-    // // Update current section specifically
-    // const updatedSection = newSections[curSection];
-    // if (updatedSection) {
-    //   api.set({
-    //     x: updatedSection.section.x,
-    //     y: updatedSection.section.y,
-    //     width: currentWidth,
-    //     height: newHeight
-    //   });
-    // }
-  
-    // setSections(newSections);
   };
 
   const handleDivide = () => {
@@ -431,21 +415,28 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
 
   const handleSectionClicked = (index:number) => {
 
-    const val = sections[index].start;
-    setCurSection(index);
-    
-    setPlayed(val);
-    
-    playerRef.current!.seekTo(val);
-    
+    const val = (sections[index].start + sections[index].end)/2;
+    setPlayedAndSeek(val);
+  }
 
-    api.set({
-      x: sections[index].section.x,
-      y: sections[index].section.y,
-      width: sections[index].section.width,
-      height: sections[index].section.height,
-    });
+  const convertTimeStamptoSec = (timeStamp: string) => {
+    const [hours, minutes, seconds] = timeStamp.split(':').map(Number);
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    return totalSeconds;
+  }
 
+  const setPlayedAndSeek = (time: number) => {
+
+    if(time < 0){
+      time = 0;
+    } else if(time > 1) {
+      time = 1;
+    }
+
+    setPlayed(time);
+    if(playerRef.current){
+      playerRef.current.seekTo(time)
+    }
   }
 
   if(fetchErr)
@@ -520,13 +511,18 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
               style={{width: "100%"}}
               onChange={(e) => {
                 const val = parseFloat(e.target.value)
-                setPlayed(val);
-                if(playerRef.current){
-                  playerRef.current.seekTo(val);
-                }
+                setPlayedAndSeek(val);
               }}
             />
-            <div style={{height: "10px", width:"100%", position:"relative", margin: "20px 0"}} ref={progressRef}>
+            <SpaceBetween size='xs' direction='vertical' alignItems='end'>
+              <SpaceBetween size='xs' direction='horizontal'>
+                <Button onClick={()=>{setPlayedAndSeek(played-0.001)}} variant='inline-link'> -0.1% </Button>
+                <Button onClick={()=> setPlaying(!playing)} iconName={playing? "pause" : "play"} variant='inline-icon'/>
+                <Button onClick={()=>{setPlayedAndSeek(played+0.001)}} variant='inline-link'> +0.1% </Button>
+              </SpaceBetween>
+            </SpaceBetween>
+
+<div style={{height: "10px", width:"100%", position:"relative", margin: "10px 0"}} ref={progressRef}>
               {
                 progressRef.current ? sections.map((section, index) => (
                   <div 
@@ -543,12 +539,11 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
                 )) : <div style={{backgroundColor:"red", border:"solid black", height: "10px", width:"100%"}}></div>
               }
             </div>
-            <br />
+
             <SpaceBetween size='xs' direction='vertical' alignItems='end'>
               <SpaceBetween size='xs' direction='horizontal'>
-                <Button onClick={()=> setPlaying(!playing)}>{playing ? "Pause":"Play"}</Button>
-                <Button onClick={handleDivide}>Cut</Button>
-                <Button onClick={handleReset}>Reset</Button>
+                <Button onClick={handleDivide} iconName="insert-row" variant='inline-icon'/>
+                <Button onClick={handleReset} iconName="refresh" variant='inline-icon'/>
               </SpaceBetween>
             </SpaceBetween>
           </>
@@ -559,9 +554,31 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
         <Table
           columnDefinitions={[
             {
-              id: "timestring",
-              header: "Timestamp",
-              cell: item => item.timestring,
+              id: "startTime",
+              header: "start",
+              cell: item => (<Link
+                onFollow={() => {
+                  let duration = playerRef.current!.getDuration();
+                  let start = convertTimeStamptoSec(item.timestring.split(" --> ")[0])/duration;
+                  playerRef.current!.seekTo(start);
+                }}
+              >
+                {item.timestring.split(" --> ")[0]}
+              </Link>),
+              isRowHeader: true
+            },
+            {
+              id: "endTime",
+              header: "end",
+              cell: item => (<Link
+                onFollow={() => {
+                  let duration = playerRef.current!.getDuration();
+                  let end = convertTimeStamptoSec(item.timestring.split(" --> ")[1])/duration;
+                  playerRef.current!.seekTo(end);
+                }}
+              >
+                {item.timestring.split(" --> ")[1]}
+              </Link>),
               isRowHeader: true
             },
             {
@@ -601,7 +618,8 @@ const ShortifyComponent =  forwardRef((props: ShortifyComponentProps, ref) => {
             setSubtitles(newSubtitles);
           }}
           columnDisplay={[
-            { id: "timestring", visible: true },
+            { id: "startTime", visible: true },
+            { id: "endTime", visible: true },
             { id: "index", visible: false },
             { id: "text", visible: true },
           ]}

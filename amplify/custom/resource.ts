@@ -1,7 +1,10 @@
 export { ExtractTopics } from './ExtractTopics/resource';
+export { DetectShotChanges } from './DetectShotChanges/resource';
 export { ProcessTopics } from './ProcessTopics/resource';
 export { ExtractTimeframe } from './ExtractTimeframe/resource';
 export { MakeShortTemplate } from './MakeShortTemplate/resource';
 export { CreateBackground } from './CreateBackground/resource';
 export { VideoUploadStateMachine } from './step-functions/VideoUploadStateMachine';
 export { GenerateShortStateMachine } from './step-functions/GenerateShortStateMachine';
+export { UnifiedReasoningStateMachine } from './step-functions/UnifiedReasoningStateMachine';
+export { UnifiedReasoning } from './UnifiedReasoning/resource';

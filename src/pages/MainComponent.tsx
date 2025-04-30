@@ -27,7 +27,7 @@ const MainComponent: React.FC<MainComponentProps> = (props) => {
       <TopNavigation
         identity={{
           href: "/",
-          title: "AWS Shorts",
+          title: "Short-form Creator",
         }}
         utilities={[
           {
@@ -47,12 +47,13 @@ const MainComponent: React.FC<MainComponentProps> = (props) => {
         navigation={
           <SideNavigation
             header={{
-              href: '#',
-              text: 'AWS Shorts',
+              href: '/',
+              text: 'Short-form Creator',
             }}
             items={[
-              { type: 'link', text: `Create New Shorts`, href: `/` },
-              { type: 'link', text: `Shorts History`, href: `/history` },
+              { type: 'link', text: `Create Short-form`, href: `/` },
+              { type: 'link', text: `Short-form History`, href: `/history` },
+              { type: 'link', text: `Short-form Gallery`, href: `/gallery` },
             ]}
           />
         }

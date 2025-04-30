@@ -11,7 +11,7 @@ const FinalShortComponent: React.FC = () => {
     const fetchVideoUrl = async () => {
       try {
         const file = await getUrl({
-          path: `videos/${id}/Final/${highlight}-final.mp4`,
+          path: `videos/${id}/Final/${highlight}.mp4`,
           options: {
             validateObjectExistence: true,
             useAccelerateEndpoint: true,

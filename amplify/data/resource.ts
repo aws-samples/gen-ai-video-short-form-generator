@@ -6,6 +6,7 @@ const publishHandler = defineFunction({
 
 export const generateShortFunction = defineFunction({
   entry: "./generateShort.ts",
+  resourceGroupName: "data"
 });
 
 const schema = a.schema({
@@ -15,6 +16,10 @@ const schema = a.schema({
       modelID: a.string().required(),
       shortified: a.boolean().required(),
       stage: a.integer().required(),
+      galleries: a.hasMany("Gallery", "historyId"),
+      numberOfVideos: a.integer().required(),
+      theme: a.string().required(),
+      videoLength: a.integer().required(),
     })
     .authorization((allow) => [allow.owner()]),
 
@@ -27,6 +32,19 @@ const schema = a.schema({
   })
   .identifier(['VideoName', "Index"])
   .authorization((allow) => [allow.owner()]),
+
+  Gallery: a.model({
+    historyId: a.id().required(),
+    highlightId: a.id().required(),
+    location: a.string().required(),
+    question: a.string(),
+    text: a.string(),
+    history: a.belongsTo('History', 'historyId'),
+    type: a.string().default("gallery"),
+    createdAt: a.string()
+  })
+  .secondaryIndexes((index) => [index('type').sortKeys(['createdAt'])])
+  .authorization((allow) => [allow.authenticated()]),
   
   StageChanged: a.customType({
     videoId: a.string().required(),
@@ -68,6 +86,7 @@ const schema = a.schema({
     .returns(a.string())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(generateShortFunction)),
+
 });
 
 export type Schema = ClientSchema<typeof schema>;

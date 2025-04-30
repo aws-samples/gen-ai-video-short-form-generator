@@ -5,50 +5,52 @@ export interface ModelOption {
   logo: string;
   modelId: string;
   provider: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 export const modelOptions: ModelOption[] = [
   {
-     name: "Claude 3.0 Opus",
-     logo: "logos/anthropic-logo.png",
-     modelId: "anthropic.claude-3-opus-20240229-v1:0",
-     provider: "Anthropic"
+    name: "Nova Lite",
+    logo: "logos/anthropic-logo.png",
+    modelId: "us.amazon.nova-lite-v1:0",
+    provider: "Amazon"
   },
   {
-    name: "Claude 3.5 Sonnet v1",
+    name: "Nova Pro",
     logo: "logos/anthropic-logo.png",
-    modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
+    modelId: "us.amazon.nova-pro-v1:0",
+    provider: "Amazon"
+  },
+  {
+    name: "Claude 3.7 Sonnet",
+    logo: "logos/anthropic-logo.png",
+    modelId: "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     provider: "Anthropic"
   },
   {
     name: "Claude 3.5 Sonnet v2",
     logo: "logos/anthropic-logo.png",
-    modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    modelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
     provider: "Anthropic"
   },
   {
-    name: "Claude 3.0 Sonnet",
+    name: "Claude 3.5 Sonnet v1",
     logo: "logos/anthropic-logo.png",
-    modelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+    modelId: "us.anthropic.claude-3-5-sonnet-20240620-v1:0",
     provider: "Anthropic"
   },
   {
-    name: "Claude 3.0 Haiku",
+    name: "Claude 3.5 Haiku",
     logo: "logos/anthropic-logo.png",
-    modelId: "anthropic.claude-3-haiku-20240307-v1:0",
+    modelId: "us.anthropic.claude-3-5-haiku-20241022-v1:0",
     provider: "Anthropic"
-  }
-  // {
-  //   name: "Llama 3 70b Instruct",
-  //   logo: "logos/meta-logo.png",
-  //   modelId: "meta.llama3-70b-instruct-v1:0",
-  //   provider: "Meta"
-  // },
-  // {
-  //   name: "Titan Text Premier",
-  //   logo: "logos/amazon-logo.png",
-  //   modelId: "amazon.titan-text-premier-v1:0",
-  //   provider: "Amazon"
-  // },
+  },
+  {
+    name: "DeepSeek R1",
+    logo: "logos/deepseek-logo.png",
+    modelId: "us.deepseek.r1-v1:0",
+    provider: "DeepSeek"
+  },
   // Add more models as needed
 ];

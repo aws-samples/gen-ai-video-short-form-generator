@@ -19,55 +19,18 @@ HIGHLIGHT_TABLE_NAME = os.environ["HIGHLIGHT_TABLE_NAME"]
 
 import difflib
 
-def normalize_text(text):
-    """Normalize both Korean and English text"""
-    import re
-    
-    # Remove punctuation and special characters, but keep spaces for English
-    text = re.sub(r'[^\w\s]', '', text)
-    
-    # Convert to lowercase
-    text = text.lower()
-    
-    # Normalize spaces (remove multiple spaces)
-    text = ' '.join(text.split())
-    
-    # Handle special cases like numbers and common variations
-    text = re.sub(r'(\d),(\d)', r'\1\2', text)  # "1,000" -> "1000"
-    
-    logger.debug(f"Normalized text: '{text}' from original: '{text}'")
-    return text
-
-
 def string_similarity(s1, s2):
-    """Compare texts with normalization for both Korean and English"""
-    # Normalize both strings
-    s1_norm = normalize_text(s1)
-    s2_norm = normalize_text(s2)
+    # Keep spaces, only lowercase
+    s1 = s1.lower().strip()
+    s2 = s2.lower().strip()
     
-    # Calculate character-based similarity
-    char_matcher = difflib.SequenceMatcher(None, s1_norm, s2_norm)
-    char_ratio = char_matcher.ratio()
+    # Use more sophisticated tokenization
+    words1 = s1.split()
+    words2 = s2.split()
     
-    # Calculate word-based similarity
-    words1 = s1_norm.split()
-    words2 = s2_norm.split()
-    word_matcher = difflib.SequenceMatcher(None, words1, words2)
-    word_ratio = word_matcher.ratio()
-    
-    # Use the average of both ratios
-    ratio = (char_ratio + word_ratio) / 2
-    
-    logger.debug(f"Comparing:")
-    logger.debug(f"Original 1: {s1}")
-    logger.debug(f"Original 2: {s2}")
-    logger.debug(f"Normalized 1: {s1_norm}")
-    logger.debug(f"Normalized 2: {s2_norm}")
-    logger.debug(f"Character similarity: {char_ratio}")
-    logger.debug(f"Word similarity: {word_ratio}")
-    logger.debug(f"Final ratio: {ratio}")
-    
-    return ratio
+    # Use sequence matcher on words
+    matcher = difflib.SequenceMatcher(None, words1, words2)
+    return matcher.ratio()
 
 def extract_full_transcript(json_content):
     return " ".join([item['alternatives'][0]['content'] for item in json_content['results']['items'] if item['type'] == 'pronunciation'])
@@ -76,89 +39,86 @@ def extract_words_with_timestamp(json_content):
     return json_content['results']['items']
 
 def find_timeframes_for_script(highlight_script, json_content):
+    logger.debug("Starting find_timeframes_for_script")
+    logger.debug(f"Input highlight script: {highlight_script}")
+    
     words_with_timestamp = json_content['results']['items']
+    logger.debug(f"Total words in transcript: {len(words_with_timestamp)}")
+    
     segments = [seg.strip() for seg in highlight_script.split("[...]") if seg.strip()]
+    logger.debug(f"Split segments: {segments}")
+    logger.debug(f"Number of segments: {len(segments)}")
+    
     timeframes = []
 
     for i, segment in enumerate(segments):
-        cleaned_segment = segment
+        logger.debug(f"\nProcessing segment {i+1}/{len(segments)}: {segment}")
+        cleaned_segment = segment.lower()
         best_match_ratio = 0
         best_match_start = 0
         best_match_end = 0
         best_matching_window = ""
 
-        target_word_count = len(cleaned_segment.split())
-        
-        # Try different window sizes around our target
-        window_sizes = [
-            target_word_count,
-            target_word_count + 2,
-            target_word_count - 1
-        ]
-        
-        logger.debug(f"\nProcessing segment {i+1}: {cleaned_segment}")
-        logger.debug(f"Target word count: {target_word_count}")
+        # Calculate window size and convert to integer
+        base_window_size = len(cleaned_segment.split())
+        window_size = min(int(base_window_size * 1.1), len(words_with_timestamp))
+        logger.debug(f"Base window size: {base_window_size}, Adjusted window size: {window_size}")
 
-        for window_size in window_sizes:
-            if window_size < 1:
-                continue
-                
-            for j in range(len(words_with_timestamp)):
-                # Collect words until we have enough pronunciation items
-                current_words = []
-                pronunciation_count = 0
-                k = j
-                
-                while (k < len(words_with_timestamp) and 
-                       pronunciation_count < window_size):
-                    word_item = words_with_timestamp[k]
-                    if word_item['type'] == 'pronunciation':
-                        current_words.append(word_item)
-                        pronunciation_count += 1
-                    k += 1
-                
-                if pronunciation_count < window_size * 0.8:  # Need most of our words
-                    continue
-
-                window = ' '.join(word['alternatives'][0]['content'] 
-                                for word in current_words)
-                
-                match_ratio = string_similarity(cleaned_segment, window)
-                
-                if match_ratio > best_match_ratio:
-                    best_match_ratio = match_ratio
-                    best_match_start = j
-                    best_match_end = k - 1
-                    best_matching_window = window
-                    logger.debug(f"New best match found:")
-                    logger.debug(f"Window: {window}")
-                    logger.debug(f"Match ratio: {match_ratio}")
-
-        logger.debug(f"Final best match:")
-        logger.debug(f"Ratio: {best_match_ratio}")
-        logger.debug(f"Window: {best_matching_window}")
-
-        # Slightly lower threshold since we're being more strict with matching
-        if best_match_ratio > 0.65:
-            # Find the exact start and end points
-            while (best_match_start < best_match_end and 
-                   words_with_timestamp[best_match_start]['type'] != 'pronunciation'):
-                best_match_start += 1
-                
-            while (best_match_end > best_match_start and 
-                   words_with_timestamp[best_match_end]['type'] != 'pronunciation'):
-                best_match_end -= 1
+        for j in range(len(words_with_timestamp)):
+            # Ensure we don't exceed array bounds
+            current_window_size = min(window_size, len(words_with_timestamp) - j)
             
-            start_time = float(words_with_timestamp[best_match_start]['start_time'])
-            end_time = float(words_with_timestamp[best_match_end]['end_time'])
+            window = ' '.join(item['alternatives'][0]['content'] 
+                            for item in words_with_timestamp[j:j+current_window_size] 
+                            if item['type'] == 'pronunciation')
+            
+            match_ratio = string_similarity(cleaned_segment, window)
+            
+            if match_ratio > best_match_ratio:
+                best_match_ratio = match_ratio
+                best_match_start = j
+                best_match_end = j + current_window_size
+                best_matching_window = window
+                logger.debug(f"New best match found at position {j}:")
+                logger.debug(f"Window: {window}")
+                logger.debug(f"Match ratio: {match_ratio}")
+
+        logger.debug(f"\nFinal best match for segment {i+1}:")
+        logger.debug(f"Original segment: {cleaned_segment}")
+        logger.debug(f"Best matching window: {best_matching_window}")
+        logger.debug(f"Best match ratio: {best_match_ratio}")
+        logger.debug(f"Best match indices: {best_match_start} to {best_match_end}")
+
+        if best_match_ratio > 0.70:
+            start_index = best_match_start
+            end_index = best_match_end - 1 
+
+            # Debug original indices
+            logger.debug(f"Initial indices - start: {start_index}, end: {end_index}")
+
+            while start_index < end_index and words_with_timestamp[start_index]['type'] != 'pronunciation':
+                start_index += 1
+                logger.debug(f"Adjusted start index to: {start_index}")
+            
+            while end_index > start_index and words_with_timestamp[end_index]['type'] != 'pronunciation':
+                end_index -= 1
+                logger.debug(f"Adjusted end index to: {end_index}")
+            
+            start_time = float(words_with_timestamp[start_index]['start_time'])
+            end_time = float(words_with_timestamp[end_index]['end_time'])
             
             timeframes.append((start_time, end_time, i))
             
-            logger.debug(f"Found timeframe: {start_time} - {end_time}")
-            logger.debug(f"Start word: {words_with_timestamp[best_match_start]['alternatives'][0]['content']}")
-            logger.debug(f"End word: {words_with_timestamp[best_match_end]['alternatives'][0]['content']}")
+            logger.debug(f"Final timeframe for segment {i+1}:")
+            logger.debug(f"Start time: {start_time}")
+            logger.debug(f"End time: {end_time}")
+            logger.debug(f"Start word: {words_with_timestamp[start_index]['alternatives'][0]['content']}")
+            logger.debug(f"End word: {words_with_timestamp[end_index]['alternatives'][0]['content']}")
         else:
-            logger.warning(f"No good match found for: {cleaned_segment}")
+            logger.warning(f"No good match found for segment {i+1}")
+            logger.warning(f"Segment text: {cleaned_segment}")
+            logger.warning(f"Best match ratio found: {best_match_ratio}")
+            logger.warning(f"Best matching window: {best_matching_window}")
 
     logger.debug("\nAll timeframes before sorting:")
     logger.debug(timeframes)

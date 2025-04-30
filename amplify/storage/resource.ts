@@ -6,5 +6,8 @@ export const storage = defineStorage({
     'videos/*': [
       allow.entity('identity').to(['read', 'write', 'delete'])
     ],
+    'assets/*': [
+      allow.entity('identity').to(['read'])
+    ]
   }),
 });

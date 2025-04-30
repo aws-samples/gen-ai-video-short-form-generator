@@ -6,18 +6,18 @@ import { Duration } from 'aws-cdk-lib/core';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Role, ServicePrincipal, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam'
 
-import { ExtractTopics, ProcessTopics, ExtractTimeframe, DetectShotChanges } from '../resource';
+import { UnifiedReasoning } from '../resource';
 
-type VideoUploadStateMachineProps = {
+type UnifiedReasoningStateMachineProps = {
   bucket: IBucket,
   historyTable: ITable,
   highlightTable: ITable
 };
 
-export class VideoUploadStateMachine extends Construct {
+export class UnifiedReasoningStateMachine extends Construct {
   public readonly stateMachine: sfn.StateMachine;
 
-  constructor(scope: Construct, id: string, props: VideoUploadStateMachineProps) {
+  constructor(scope: Construct, id: string, props: UnifiedReasoningStateMachineProps) {
     super(scope, id);
 
     // IAM Role for MediaConvert
@@ -32,25 +32,9 @@ export class VideoUploadStateMachine extends Construct {
     });
 
     // Lambda functions
-    const extractTopics = new ExtractTopics(this, "ExtractTopicsFunc", {
+    const unifiedReasoning = new UnifiedReasoning(this, "UnifiedReasoningFunc", {
       bucket: props.bucket,
       highlightTable: props.highlightTable,
-      historyTable: props.historyTable
-    });
-
-    const processTopic = new ProcessTopics(this, "ProcessTopicFunc", {
-      bucket: props.bucket,
-      highlightTable: props.highlightTable,
-      historyTable: props.historyTable
-    });
-
-    const extractTimeframe = new ExtractTimeframe(this, "ExtractTimeframeFunc", {
-      bucket: props.bucket,
-      highlightTable: props.highlightTable
-    });
-    
-    const detectShotChanges = new DetectShotChanges(this, "DetectShotChangesFunc", {
-      bucket: props.bucket,
       historyTable: props.historyTable
     });
 
@@ -82,42 +66,13 @@ export class VideoUploadStateMachine extends Construct {
     // Step Functions definition
     const prepareParameters = new sfn.Pass(this, 'PrepareParameters', {
       parameters: {
-        "uuid.$": "States.Format('{}', States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1))",
-        "TranscriptionJobName.$": "States.Format('{}_stepFunction', States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1))",
-        "raw_file_uri.$": "States.Format('s3://{}/{}', $.detail.bucket.name, $.detail.object.key)",
-        "bucket_name.$": "$.detail.bucket.name",
-        "OutputKey.$": "States.Format('videos/{}/Transcript.json', States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1))"
+        "uuid.$": "$.uuid",
+        "bucket_name.$": "$.bucket_name",
+        "TranscriptionJobName.$": "States.Format('{}_stepFunction', $.uuid)",
+        "raw_file_uri.$": "States.Format('s3://{}/videos/{}/RAW.mp4', $.bucket_name, $.uuid)",
+        "OutputKey.$": "States.Format('videos/{}/Transcript.json', $.uuid)"
       }
     });
-
-    // Get model ID from History table
-    const getModelId = new tasks.DynamoGetItem(this, 'GetModelId', {
-      table: props.historyTable,
-      key: { id: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt("$.uuid")) },
-      resultPath: "$.modelInfo"
-    });
-
-    // Start UnifiedReasoningStateMachine for supported models
-    const startUnifiedReasoning = new tasks.StepFunctionsStartExecution(this, 'StartUnifiedReasoningStateMachine', {
-      stateMachine: sfn.StateMachine.fromStateMachineArn(this, 'UnifiedReasoningStateMachine', process.env.UNIFIED_REASONING_STATE_MACHINE!),
-      input: sfn.TaskInput.fromObject({
-        "uuid.$": "$.uuid",
-        "bucket_name.$": "$.bucket_name"
-      }),
-      integrationPattern: sfn.IntegrationPattern.REQUEST_RESPONSE
-    });
-
-    // Check model ID and redirect to appropriate state machine
-    const continueVideoUpload = new sfn.Pass(this, 'ContinueVideoUpload', {
-      resultPath: sfn.JsonPath.DISCARD
-    });
-
-    const checkModelId = new sfn.Choice(this, 'CheckModelId')
-      .when(sfn.Condition.or(
-        sfn.Condition.stringEquals("$.modelInfo.Item.modelID.S", "us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
-        sfn.Condition.stringEquals("$.modelInfo.Item.modelID.S", "us.deepseek.r1-v1:0")
-      ), startUnifiedReasoning)
-      .otherwise(continueVideoUpload);
 
     const checkSubtitles = new tasks.CallAwsService(this, 'CheckSubtitles', {
       service: 's3',
@@ -126,7 +81,7 @@ export class VideoUploadStateMachine extends Construct {
       iamResources: ['*'],
       parameters: {
         "Bucket.$": "$.bucket_name",
-        "Key.$": "States.Format('videos/{}/Transcript.json', $.uuid)"
+        "Key.$": "States.Format('videos/{}/Transcript.vtt', $.uuid)"  // Check for English VTT
       },
       resultPath: sfn.JsonPath.DISCARD,
     });
@@ -142,7 +97,15 @@ export class VideoUploadStateMachine extends Construct {
         "OutputBucketName.$": "$.bucket_name",
         "OutputKey.$": "$.OutputKey",
         "LanguageOptions": ["en-US", "ko-KR"],
-        "IdentifyLanguage": true
+        "IdentifyLanguage": true,
+        "Subtitles": {
+          "Formats": ["vtt"],
+          "OutputStartIndex": 1
+        },
+        "Settings": {
+          "ShowSpeakerLabels": true,
+          "MaxSpeakerLabels": 10
+        }
       },
       resultPath: sfn.JsonPath.DISCARD
     });
@@ -162,61 +125,23 @@ export class VideoUploadStateMachine extends Construct {
 
     const checkTranscriptionJobStatus = new sfn.Choice(this, 'CheckTranscriptionJobStatus');
 
-    const extractTopicsTask = new tasks.LambdaInvoke(this, 'ExtractTopics', {
-      lambdaFunction: extractTopics.handler,
+    const unifiedReasoningTask = new tasks.LambdaInvoke(this, 'UnifiedReasoning', {
+      lambdaFunction: unifiedReasoning.handler,
       payload: sfn.TaskInput.fromJsonPathAt("$"),
-      resultPath: "$.TopicsResult"
+      resultPath: "$.reasoningResult"
     });
 
-    const processTopicsMap = new sfn.Map(this, 'ProcessTopicsMap', {
-      itemsPath: "$.TopicsResult.Payload.topics",
-      maxConcurrency: 5,
-      itemSelector:{
-        "topic.$": "$$.Map.Item.Value",
-        "topics.$": "$.TopicsResult.Payload.topics",
+    const highlightProcessMap = new sfn.Map(this, 'HighlightProcessMap', {
+      itemsPath: "$.reasoningResult.Payload.body",
+      parameters: {
+        "highlight.$": "$$.Map.Item.Value",
         "uuid.$": "$.uuid",
-        "index.$": "$$.Map.Item.Index",
-        "script.$": "$.TopicsResult.Payload.script",
-        "modelID.$": "$.TopicsResult.Payload.modelID",
-        "owner.$": "$.TopicsResult.Payload.owner",
         "bucket_name.$": "$.bucket_name",
+        "raw_file_path.$": "States.Format('s3://{}/videos/{}/RAW.mp4', $.bucket_name, $.uuid)",
+        "output_destination.$": "States.Format('s3://{}/videos/{}/FHD/{}-FHD', $.bucket_name, $.uuid, $$.Map.Item.Value.index)"
       },
       resultPath: sfn.JsonPath.DISCARD
     });
-
-    const processTopicTask = new tasks.LambdaInvoke(this, 'ProcessTopic', {
-      lambdaFunction: processTopic.handler,
-      payload: sfn.TaskInput.fromJsonPathAt("$"),
-      resultPath: sfn.JsonPath.DISCARD
-    });
-
-    const highlightExtractMap = new sfn.Map(this, 'HighlightExtractMap', {
-      itemsPath: "$.TopicsResult.Payload.topics",
-      itemSelector: {
-        "topic.$": "$$.Map.Item.Value",
-        "uuid.$": "$.uuid",
-        "index.$": "$$.Map.Item.Index",
-        "bucket_name.$": "$.bucket_name",
-      },
-      resultPath: sfn.JsonPath.DISCARD
-    });
-
-    const extractTimeframeTask = new tasks.LambdaInvoke(this, 'ExtractTimeframe', {
-      lambdaFunction: extractTimeframe.handler,
-      payload: sfn.TaskInput.fromJsonPathAt("$"),
-      resultSelector: {
-        "statusCode.$": "$.Payload.statusCode",
-        "duration.$": "$.Payload.duration",
-        "index.$": "$.Payload.index",
-        "uuid.$": "$.Payload.uuid",
-        "raw_file_path.$": "$.Payload.raw_file_path",
-        "timeframes.$": "$.Payload.timeframes",
-        "output_destination.$": "$.Payload.output_destination"
-      },
-      resultPath: "$.timeframe_extracted",
-    });
-
-    const checkExtractionJobStatus = new sfn.Choice(this, 'CheckExtractionJobStatus');
 
     const mediaConvertExtractJob = new tasks.MediaConvertCreateJob(this, 'MediaConvertExtractJob', {
       createJobRequest: {
@@ -227,7 +152,7 @@ export class VideoUploadStateMachine extends Construct {
           },
           "Inputs": [
             {
-              "FileInput.$": "$.timeframe_extracted.raw_file_path",
+              "FileInput.$": "$.raw_file_path",
               "AudioSelectors": {
                 "Audio Selector 1": {
                   "DefaultSelection": "DEFAULT"
@@ -235,7 +160,7 @@ export class VideoUploadStateMachine extends Construct {
               },
               "VideoSelector": {},
               "TimecodeSource": "ZEROBASED",
-              "InputClippings.$": "$.timeframe_extracted.timeframes"
+              "InputClippings.$": "$.highlight.timeframes"
             }
           ],
           "OutputGroups": [ 
@@ -249,7 +174,7 @@ export class VideoUploadStateMachine extends Construct {
                   },
                   "VideoDescription": {
                     "Width": 1920,
-                    "ScalingBehavior": "DEFAULT",
+                    "ScalingBehavior": "FIT",
                     "Height": 1080,
                     "CodecSettings": {
                       "Codec": "H_264",
@@ -280,7 +205,7 @@ export class VideoUploadStateMachine extends Construct {
               "OutputGroupSettings": {
                 "Type": "FILE_GROUP_SETTINGS",
                 "FileGroupSettings": {
-                  "Destination.$": "$.timeframe_extracted.output_destination"
+                  "Destination.$": "$.output_destination"
                 }
               }
             }
@@ -289,18 +214,17 @@ export class VideoUploadStateMachine extends Construct {
       },
       integrationPattern: sfn.IntegrationPattern.RUN_JOB,
       resultPath: sfn.JsonPath.DISCARD
-    })
-
+    });
 
     const mediaConvertExtractJobParam = new sfn.Pass(this, 'MediaConvertExtractJobParam', {
       parameters: {
-        "FHD_Jobname.$": "States.Format('{}_FHD_{}', $.timeframe_extracted.uuid, $.timeframe_extracted.index)",
-        "FHD_SourceKey.$": "States.Format('{}.mp4', $.timeframe_extracted.output_destination)",
-        "FHD_OutputKey.$": "States.Format('videos/{}/ShortsTranscript/{}-TranscriptShorts.json', $.timeframe_extracted.uuid, $.timeframe_extracted.index)"
+        "FHD_Jobname.$": "States.Format('{}_FHD_{}', $.uuid, $.highlight.index)",
+        "FHD_SourceKey.$": "States.Format('{}.mp4', $.output_destination)",
+        "FHD_OutputKey.$": "States.Format('videos/{}/ShortsTranscript/{}-TranscriptShorts.json', $.uuid, $.highlight.index)"
       },
       resultPath: "$.FHD_Job"
     });
-  
+
     const startHighlightTranscriptionJob = new tasks.CallAwsService(this, 'StartHighlightTranscriptionJob', {
       service: 'transcribe',
       action: 'startTranscriptionJob',
@@ -341,11 +265,7 @@ export class VideoUploadStateMachine extends Construct {
 
     // Definition body
     const definitionBody = prepareParameters
-      .next(getModelId)
-      .next(checkModelId);
-
-    // Continue with video upload flow
-    continueVideoUpload.next(checkSubtitles
+      .next(checkSubtitles
         .addCatch(startTranscriptionJob
           .next(waitForTranscriptionJob)
           .next(getTranscriptionJobStatus)
@@ -358,67 +278,57 @@ export class VideoUploadStateMachine extends Construct {
                 })
               )
             .otherwise(waitForTranscriptionJob)
-          )
-          , {resultPath: sfn.JsonPath.DISCARD}
+          ), {
+            resultPath: sfn.JsonPath.DISCARD,
+            errors: ["States.ALL"]  // Catch all errors from checkSubtitles
+          }
         )
       )
       .next(sharedUpdateDDB1)
       .next(updateEvent(1))
-      .next(extractTopicsTask)
-      .next(processTopicsMap
-        .itemProcessor(processTopicTask)
-      )
+      .next(unifiedReasoningTask)
       .next(updateDDB(2))
       .next(updateEvent(2))
-      .next(highlightExtractMap
-        .itemProcessor(extractTimeframeTask
-          .next(checkExtractionJobStatus
-            .when(sfn.Condition.numberEquals("$.timeframe_extracted.statusCode", 200),
-              mediaConvertExtractJob
-                .next(mediaConvertExtractJobParam)
-                .next(startHighlightTranscriptionJob)
-                .next(waitForHighlightTranscriptionJob)
-                .next(getHighlightTranscriptionJobStatus)
-                .next(checkHighlightTranscriptionJobStatus
-                  .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "COMPLETED"),
-                    new sfn.Succeed(this, 'HighlightTranscriptionSucceeded')
-                  )
-                  .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "FAILED"),
-                    new sfn.Fail(this, 'HighlightTranscriptionFailed', {
-                      cause: "Highlight transcription job failed",
-                      error: "HighlightTranscriptionJobFailed"
-                    })
-                  )
-                  .otherwise(waitForHighlightTranscriptionJob)
-                )
-            )
-            .otherwise(new sfn.Pass(this, 'ExtractionFailed', {}))
+      .next(highlightProcessMap.itemProcessor(
+        new sfn.Pass(this, 'ParseTimeframes', {
+          parameters: {
+            "highlight": {
+              "index.$": "$.highlight.index",
+              "timeframes.$": "$.highlight.timeframes"
+            },
+            "uuid.$": "$.uuid",
+            "bucket_name.$": "$.bucket_name",
+            "raw_file_path.$": "$.raw_file_path",
+            "output_destination.$": "$.output_destination"
+          }
+        })
+        .next(mediaConvertExtractJob)
+        .next(mediaConvertExtractJobParam)
+        .next(startHighlightTranscriptionJob)
+        .next(waitForHighlightTranscriptionJob)
+        .next(getHighlightTranscriptionJobStatus)
+        .next(checkHighlightTranscriptionJobStatus
+          .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "COMPLETED"),
+            new sfn.Succeed(this, 'HighlightTranscriptionSucceeded')
           )
+          .when(sfn.Condition.stringEquals("$.highlightJobStatus.TranscriptionJob.TranscriptionJobStatus", "FAILED"),
+            new sfn.Fail(this, 'HighlightTranscriptionFailed', {
+              cause: "Highlight transcription job failed",
+              error: "HighlightTranscriptionJobFailed"
+            })
+          )
+          .otherwise(waitForHighlightTranscriptionJob)
         )
-      )
-      .next(new tasks.LambdaInvoke(this, 'DetectShotChangesTask', {
-        lambdaFunction: detectShotChanges.handler,
-        payload: sfn.TaskInput.fromObject({
-          "uuid.$": "$.uuid",
-          "bucket_name.$": "$.bucket_name"
-        }),
-        resultPath: "$.shotChangesResult"
-      }))
+      ))
       .next(updateDDB(3))
-      .next(updateEvent(3))
-
+      .next(updateEvent(3));
 
     // Create role for the state machine
-    const stateMachineRole = new Role(this, 'VideoUploadStateMachineRole', {
+    const stateMachineRole = new Role(this, 'UnifiedReasoningStateMachineRole', {
       assumedBy: new ServicePrincipal('states.amazonaws.com'),
       inlinePolicies: {
         'StateMachineExecutionPolicy': new PolicyDocument({
           statements: [
-            // Start UnifiedReasoningStateMachine
-            new PolicyStatement({
-              actions: ['states:StartExecution'],
-              resources: [process.env.UNIFIED_REASONING_STATE_MACHINE!]
-            }),
             // DynamoDB permissions
             new PolicyStatement({
               actions: ['dynamodb:GetItem', 'dynamodb:UpdateItem'],
@@ -460,9 +370,9 @@ export class VideoUploadStateMachine extends Construct {
       }
     });
 
-    this.stateMachine = new sfn.StateMachine(this, 'VideoUploadStateMachine', {
+    this.stateMachine = new sfn.StateMachine(this, 'UnifiedReasoningStateMachine', {
       definitionBody: sfn.DefinitionBody.fromChainable(definitionBody),
-      comment: "A Step Function to transcribe video using Amazon Transcribe",
+      comment: "A Step Function to process video using unified reasoning",
       role: stateMachineRole
     });
   }

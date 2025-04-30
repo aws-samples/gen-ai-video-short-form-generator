@@ -8,6 +8,7 @@ import MainComponent from './pages/MainComponent';
 import VideoUploadComponent from './pages/VideoUploadComponent';
 import VideoShortifyComponent from './pages/VideoShortifyComponent';
 import ShortsHistoryComponent from './pages/ShortsHistroyComponent';
+import ShortsGalleryComponent from './pages/ShortsGalleryComponent';
 import FinalShortComponent from './pages/FinalShortComponent';
 
 
@@ -23,6 +24,7 @@ function App() {
             <Route element={<MainComponent signOut={signOut} user={user}/>}>
               <Route path="/" element={<VideoUploadComponent />}></Route>
               <Route path="/history" element={<ShortsHistoryComponent />}></Route>
+              <Route path="/gallery" element={<ShortsGalleryComponent />} />
               <Route path="/history/:id" element={<VideoShortifyComponent />}></Route>
               <Route path="/shorts/:id/:highlight" element={<FinalShortComponent />}></Route>
             </Route>

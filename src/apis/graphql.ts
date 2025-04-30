@@ -8,6 +8,6 @@ export const subscribe = (id: string) => {
 
 }
 
-export const generateShort = async (inputs: string, videoId: string, highlight: number, question:string) => {
+export const generateShort = async (inputs: string, videoId: string, highlight: number, question: string) => {
   return await client.queries.generateShort({inputs, videoId, highlight, question})
 }

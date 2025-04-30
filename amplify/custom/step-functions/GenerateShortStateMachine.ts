@@ -10,7 +10,8 @@ import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 type GenerateShortStateMachineProps = {
   bucket: IBucket,
   historyTable: ITable,
-  highlightTable: ITable
+  highlightTable: ITable,
+  galleryTable: ITable
 };
 
 export class GenerateShortStateMachine extends Construct {
@@ -30,7 +31,9 @@ export class GenerateShortStateMachine extends Construct {
 
       // lambda
       const createBackgroundFunc = new CreateBackground(this, "CreateBackgroundFunc", {bucket: props.bucket})
-      const mediaConvertTemplateFunc = new MakeShortTemplate(this, "MediaConvertTemplateFunc", {})
+      const mediaConvertTemplateFunc = new MakeShortTemplate(this, "MediaConvertTemplateFunc", {table: props.galleryTable.tableName})
+
+      props.galleryTable.grantReadWriteData(mediaConvertTemplateFunc.handler)
 
       // definition
 
@@ -41,6 +44,7 @@ export class GenerateShortStateMachine extends Construct {
           "highlight.$": "$.highlight",
           "bucket_name.$": "$.bucket_name",
           "question.$": "$.question",
+          "videoName.$": "$.videoName",
         },
       });
 

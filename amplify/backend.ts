@@ -2,13 +2,14 @@ import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { storage } from './storage/resource';
 import { data, generateShortFunction } from './data/resource'
-import { GenerateShortStateMachine, VideoUploadStateMachine } from './custom/resource';
+import { GenerateShortStateMachine, VideoUploadStateMachine, UnifiedReasoningStateMachine } from './custom/resource';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { CfnBucket } from 'aws-cdk-lib/aws-s3';
 import { EventBus, CfnRule } from 'aws-cdk-lib/aws-events'
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib/core';
 
+// Define base infrastructure
 const backend = defineBackend({
   auth,
   storage,
@@ -16,6 +17,7 @@ const backend = defineBackend({
   generateShortFunction,
 });
 
+// Configure base resources
 const s3Bucket = backend.storage.resources.bucket;
 const cfnBucket = s3Bucket.node.defaultChild as CfnBucket;
 cfnBucket.accelerateConfiguration = {
@@ -27,29 +29,43 @@ cfnBucket.notificationConfiguration = {
   },
 }
 
+// Deploy assets
 new BucketDeployment(Stack.of(s3Bucket), "UploadBackgroundImage", {
   sources: [Source.asset("./amplify/assets")],
   destinationBucket: s3Bucket,
   destinationKeyPrefix: "assets"
-})
+});
 
 const highlightTable = backend.data.resources.tables["Highlight"]
 const historyTable = backend.data.resources.tables["History"]
+const galleryTable = backend.data.resources.tables["Gallery"]
 
-// eventbridge for subscription
+// Create EventBridge resources first
 const eventStack = backend.createStack("EventBridgeStack");
-const eventBus = EventBus.fromEventBusName(
-  eventStack,
-  "EventBus",
-  "default"
+const eventBus = EventBus.fromEventBusName(eventStack, "EventBus", "default");
+
+// Create UnifiedReasoning Step Function first
+const unifiedReasoningStack = backend.createStack("UnifiedReasoningStack");
+const unifiedReasoningStateMachine = new UnifiedReasoningStateMachine(
+  unifiedReasoningStack,
+  "UnifiedReasoningStateMachine",
+  {
+    bucket: s3Bucket,
+    historyTable: historyTable,
+    highlightTable: highlightTable
+  }
 );
 
+// Set environment variable for UnifiedReasoning state machine ARN
+process.env.UNIFIED_REASONING_STATE_MACHINE = unifiedReasoningStateMachine.stateMachine.stateMachineArn;
+
+// Add EventBridge data source after all stacks are created
 backend.data.addEventBridgeDataSource("EventBridgeDataSource", eventBus);
 
 const eventBusRole = new Role(eventStack, "AppSyncInvokeRole", {
   assumedBy: new ServicePrincipal("events.amazonaws.com"),
   inlinePolicies: {
-    PolicyStatement: new PolicyDocument({
+    AppSyncPolicy: new PolicyDocument({
       statements: [
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -61,7 +77,8 @@ const eventBusRole = new Role(eventStack, "AppSyncInvokeRole", {
   },
 });
 
-const rule = new CfnRule(eventStack, "AppSyncRule", {
+// Configure EventBridge rule
+new CfnRule(eventStack, "AppSyncRule", {
   eventBusName: eventBus.eventBusName,
   eventPattern: {
     ["detail-type"]: ["StageChanged"],
@@ -91,7 +108,7 @@ const rule = new CfnRule(eventStack, "AppSyncRule", {
   ],
 });
 
-// step function
+// Configure video upload handling
 const stepfunctionStack = backend.createStack("StepFunctionStack");
 const videoUploadStateMachine = new VideoUploadStateMachine(
   stepfunctionStack,
@@ -101,15 +118,14 @@ const videoUploadStateMachine = new VideoUploadStateMachine(
     historyTable: historyTable,
     highlightTable: highlightTable
   }
-)
+);
 
 s3Bucket.grantReadWrite(videoUploadStateMachine.stateMachine);
 
-// handling video upload event
 const videoUploadStateMachineRole = new Role(stepfunctionStack, "VideoUploadStateMachineExecuteRole", {
   assumedBy: new ServicePrincipal("events.amazonaws.com"),
   inlinePolicies: {
-    PolicyStatement: new PolicyDocument({
+    StateMachineExecutePolicy: new PolicyDocument({
       statements: [
         new PolicyStatement({
           effect: Effect.ALLOW,
@@ -121,7 +137,7 @@ const videoUploadStateMachineRole = new Role(stepfunctionStack, "VideoUploadStat
   },
 });
 
-const videoUploadstateMachineRule = new CfnRule(
+new CfnRule(
   stepfunctionStack,
   "VideoUploadStateMachineRule",
   {
@@ -133,7 +149,7 @@ const videoUploadstateMachineRule = new CfnRule(
           name: [s3Bucket.bucketName],
         },
         object: {
-          key: [{ wildcard: "*/RAW.mp4" }],
+          key: [{ prefix: "*/" }, { suffix: "RAW.mp4" }],
         },
       },
     },
@@ -148,14 +164,15 @@ const videoUploadstateMachineRule = new CfnRule(
 );
 
 // generate short video
-const generateShortStack = backend.createStack("GenerateShortStack");
+const generateShortStack = backend.generateShortFunction.stack;
 const generateShortStateMachine = new GenerateShortStateMachine(
   generateShortStack,
   "GenerateShortStateMachine",
   {
     bucket: s3Bucket,
     historyTable: historyTable,
-    highlightTable: highlightTable
+    highlightTable: highlightTable,
+    galleryTable: galleryTable,
   }
 )
 

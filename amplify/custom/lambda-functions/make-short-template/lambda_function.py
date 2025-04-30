@@ -1,5 +1,11 @@
-from datetime import datetime
+from datetime import datetime, UTC
 import json
+import boto3
+import os
+import uuid
+import time
+
+dynamodb = boto3.resource('dynamodb')
 
 def convert_seconds_to_timecode(seconds):
     seconds = float(seconds)
@@ -15,7 +21,7 @@ def convert_timecode_to_seconds(timecode):
     hours, minutes, seconds, frames = map(int, timecode.split(':'))
     return hours * 3600 + minutes * 60 + seconds + frames / 25.0
 
-def create_new_video(uuid, index, bucket_name, sections, vertical):
+def create_new_video(uuid, index, bucket_name, sections, vertical, videoName):
     input_file = f'videos/{uuid}/FHD/{index}-FHD.mp4'
     subtitle = f'videos/{uuid}/ShortsTranscript/{index}-TranscriptShorts.vtt'
     output_location = f'videos/{uuid}/Final'
@@ -81,12 +87,14 @@ def create_new_video(uuid, index, bucket_name, sections, vertical):
     sections_duration_ms = int(sections_total_duration * 1000 + 40 * (len(sections)-1))
 
     background_file = f's3://{bucket_name}/videos/{uuid}/background/{index}.png'
+
+    output_key = f"{output_location}/{videoName}"
     
     OutputTemplate = [
         {
             'OutputGroupSettings': {
                 'FileGroupSettings': {
-                    'Destination': f's3://{bucket_name}/{output_location}/{index}-final'
+                    'Destination': f's3://{bucket_name}/{output_key}'
                 },
                 "Type": "FILE_GROUP_SETTINGS"
             },
@@ -160,25 +168,80 @@ def create_new_video(uuid, index, bucket_name, sections, vertical):
                         }
                     ]
                 },
+                {
+                    "ContainerSettings": {
+                        "Container": "RAW",
+                    },
+                    'VideoDescription': {
+                        "Width": 1080,
+                        "Height": 1920,
+                        "ScalingBehavior": "DEFAULT",
+                        "CodecSettings": {
+                            "Codec": "FRAME_CAPTURE",
+                            'FrameCaptureSettings': {
+                                'FramerateDenominator': 1,
+                                'FramerateNumerator': 1,
+                                'MaxCaptures': 1,
+                                'Quality': 100
+                            },
+                        },
+                        'VideoPreprocessors': {
+                            'ImageInserter': {
+                                'InsertableImages': [
+                                    {
+                                        'Width': 1080,
+                                        'Height': 1920,
+                                        'Opacity': 100,
+                                        'ImageInserterInput': background_file,
+                                        'ImageX': 0,
+                                        'ImageY': 0,
+                                        'Layer': 1,
+                                        'Duration': sections_duration_ms
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                },
             ]
         }
     ]
     
-    return InputsTemplates, OutputTemplate
+    return InputsTemplates, OutputTemplate, output_key
 
 def lambda_handler(event, context):
     bucket_name = event["bucket_name"]
     sections = event["inputs"]
-    uuid = event['videoId']
+    videoId = event['videoId']
     index = event['highlight']
     vertical = event['inputs'][0]['Vertical']
+    question = event['question']
+    videoName = event['videoName']
     
-    inputTemplate, outputTemplate = create_new_video(uuid, index, bucket_name, sections, vertical)
+    inputTemplate, outputTemplate, output_key = create_new_video(videoId, index, bucket_name, sections, vertical, videoName)
+
+    table_name = os.environ["GALLERY_TABLE_NAME"]
+    gallery_table = dynamodb.Table(table_name)
+    timestamp = datetime.now(UTC).isoformat()[:-6]+"Z"
+
+    video = {
+        "question": question,
+        "id": str(uuid.uuid4()),
+        "historyId": videoId,
+        "highlightId": videoName,
+        "location": output_key+".mp4",
+        "createdAt": timestamp,
+        "updatedAt": timestamp,
+        "type": "gallery"
+    }
+
+    gallery_table.put_item(Item=video)
+
     
     return {
         'statusCode': 200,
         'body': json.dumps({
             'inputTemplate': inputTemplate,
-            'outputTemplate': outputTemplate
+            'outputTemplate': outputTemplate,
         })
     }
