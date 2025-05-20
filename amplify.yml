@@ -1,0 +1,28 @@
+version: 1
+backend:
+  phases:
+    preBuild:
+      commands:
+        - nvm use 20
+        - npm install -g npm@latest
+    build:
+      commands:
+        - npm install
+        - npm run build
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm use 20
+        - npm install -g npm@latest
+        - npm install
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
