@@ -245,7 +245,7 @@ const ShortsGallery: React.FC<ShortsGalleryProps> = () => {
                   {
                     id: "created",
                     header: "Created",
-                    content: item => new Date(item.createdAt).toLocaleString()
+                    content: item => new Date(item.createdAt!).toLocaleString()
                   }
                 ]
               }}
